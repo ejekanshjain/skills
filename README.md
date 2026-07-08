@@ -1,6 +1,7 @@
 # Install skills
 
 ```bash
+npx skills add vercel-labs/skills -s find-skills -g
 npx skills add anthropics/skills -s docx -s pdf -s pptx -s xlsx -s frontend-design -s skill-creator -g
 npx skills add vercel-labs/agent-skills -s vercel-composition-patterns -s vercel-react-best-practices -s vercel-react-view-transitions -s web-design-guidelines -s writing-guidelines -g
 npx skills add vercel/ai -s ai-sdk -g
