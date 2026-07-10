@@ -9,7 +9,7 @@ npx skills add vercel/ai-elements -s ai-elements -g
 npx skills add vercel/streamdown -s streamdown -g
 npx skills add vercel/workflow -s workflow -s workflow-init -g
 npx skills add better-auth/skills -g
-npx skills add stripe/ai -s stripe-best-practices -s upgrade-stripe -g
+npx skills add stripe/ai -s stripe-best-practices -g
 npx skills add shadcn/ui -s shadcn -g
 npx skills add resend/react-email -s react-email -g
 ```
