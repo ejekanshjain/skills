@@ -16,7 +16,7 @@ I wanted to share some of my preferences here so we can be more aligned as we wo
 
 — Keep things simple. Channel "yagni" energy unless told otherwise.
 — Typesafety is useful, take advantage of it.
-— Write code which do not introduce any security vulnerabilities, add proper authorization checks and validations.
+— Write code that does not introduce security vulnerabilities, and include appropriate authorization checks and input validation.
 — Don't be scared to propose bold ideas or breaking changes if they can meaningfully benefit our work.
 — Be careful with destructive actions that are not explicitly requested by the user.
 — Tests are good! Endless smoke tests, "regression tests" for feature deletions, etc, much less good. Tests should be focused, not slop.
