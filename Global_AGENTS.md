@@ -14,13 +14,14 @@ I wanted to share some of my preferences here so we can be more aligned as we wo
 
 ## Coding preferences
 
-— Keep things simple. Channel "yagni" energy unless told otherwise.
-— Typesafety is useful, take advantage of it.
-— Write code that does not introduce security vulnerabilities, and include appropriate authorization checks and input validation.
-— Don't be scared to propose bold ideas or breaking changes if they can meaningfully benefit our work.
-— Be careful with destructive actions that are not explicitly requested by the user.
-— Tests are good! Endless smoke tests, "regression tests" for feature deletions, etc, much less good. Tests should be focused, not slop.
-— Comments are a great way to clarify functionality and how code is used. Don't comment every line, but feel free to describe (concisely) how functions are used above function definitions, classes, etc or some lines of code which has complexity involved in its logic.
+- Keep things simple. Channel "yagni" energy unless told otherwise.
+- Typesafety is useful, take advantage of it.
+- Write code that does not introduce security vulnerabilities, and include appropriate authorization checks and input validation.
+- Don't be scared to propose bold ideas or breaking changes if they can meaningfully benefit our work.
+- Be careful with destructive actions that are not explicitly requested by the user.
+- Write performant, optimized code.
+- Tests are good! Endless smoke tests, "regression tests" for feature deletions, etc, much less good. Tests should be focused, not slop.
+- Comments are a great way to clarify functionality and how code is used. Don't comment every line, but feel free to describe (concisely) how functions are used above function definitions, classes, etc or some lines of code which has complexity involved in its logic.
 
 ## Note
 
