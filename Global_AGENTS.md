@@ -16,7 +16,8 @@ I wanted to share some of my preferences here so we can be more aligned as we wo
 
 — Keep things simple. Channel "yagni" energy unless told otherwise.
 — Typesafety is useful, take advantage of it.
-— Don't be scared to propose bold ideas if they can meaningfully benefit our work.
+— Write code which do not introduce any security vulnerabilities, add proper authorization checks and validations.
+— Don't be scared to propose bold ideas or breaking changes if they can meaningfully benefit our work.
 — Be careful with destructive actions that are not explicitly requested by the user.
 — Tests are good! Endless smoke tests, "regression tests" for feature deletions, etc, much less good. Tests should be focused, not slop.
 — Comments are a great way to clarify functionality and how code is used. Don't comment every line, but feel free to describe (concisely) how functions are used above function definitions, classes, etc or some lines of code which has complexity involved in its logic.
