@@ -22,6 +22,7 @@ I wanted to share some of my preferences here so we can be more aligned as we wo
 - Write performant, optimized code.
 - Tests are good! Endless smoke tests, "regression tests" for feature deletions, etc, much less good. Tests should be focused, not slop.
 - Comments are a great way to clarify functionality and how code is used. Don't comment every line, but feel free to describe (concisely) how functions are used above function definitions, classes, etc or some lines of code which has complexity involved in its logic.
+- If you need a paragraph-long comment to justify why the workaround is OK, the code is wrong — fix the code unless explicitly told otherwise.
 
 ## Note
 
