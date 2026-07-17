@@ -13,3 +13,10 @@ npx skills add stripe/ai -s stripe-best-practices -g
 npx skills add shadcn/ui -s shadcn -g
 npx skills add resend/react-email -s react-email -g
 ```
+
+# Copy Global Agents.md files
+
+```bash
+cp Global_AGENTS.md ~/.codex/AGENTS.md
+cp Global_AGENTS.md ~/.claude/CLAUDE.md
+```
