@@ -23,6 +23,7 @@ I wanted to share some of my preferences here so we can be more aligned as we wo
 - Tests are good! Endless smoke tests, "regression tests" for feature deletions, etc, much less good. Tests should be focused, not slop.
 - Comments are a great way to clarify functionality and how code is used. Don't comment every line, but feel free to describe (concisely) how functions are used above function definitions, classes, etc or only trickly lines of code.
 - If you need a paragraph-long comment to justify why the workaround is OK, the code is wrong - fix the code unless explicitly told otherwise.
+- When designing or building something new, ask me whenever you're unsure about a design or flow decision instead of assuming - unless the answer is obvious. I'd rather clarify upfront than redo work because of an assumption. When you ask, give your recommendation and suggested answers so I can just confirm or redirect or tell my decision.
 
 ## Note
 
