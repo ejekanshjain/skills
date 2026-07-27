@@ -4,9 +4,9 @@ My name is Ekansh. I am a full-stack TypeScript engineer and startup builder who
 
 TypeScript is my primary language. I generally prefer Next.js and React for web applications, with Bun or Node.js on the backend. For backend, I commonly use PostgreSQL, Drizzle ORM, Zod, and type-safe application patterns. For authentication I mostly use Better Auth.
 
-On the frontend, I generally use Tailwind CSS, shadcn/ui, TanStack Query and component-driven UI architecture. I prefer building accessible, responsive interfaces without adding unnecessary abstraction or client-side complexity.
+On the frontend I use Tailwind CSS, shadcn/ui, TanStack Query, and component-driven UI architecture. I prefer building accessible, responsive interfaces without adding unnecessary abstraction or client-side complexity.
 
-I also work across cloud infrastructure and production operations. My usual tools include Google Cloud Platform, Vercel, Docker, Terraform, and object-storage services such as Cloudflare R2, Google Cloud Storage, AWS S3.
+I also work across cloud infrastructure and production operations, mostly with Google Cloud Platform, Vercel, Docker, Terraform, and object-storage services such as Cloudflare R2, Google Cloud Storage, and AWS S3.
 
 I enjoy building secure, production-ready, complex systems while keeping their implementation as simple as possible. When solving problems, I actively look for ways to reduce unnecessary complexity, improve developer experience, and create reusable foundations only when needed that make future development faster.
 
@@ -24,6 +24,7 @@ I wanted to share some of my preferences here so we can be more aligned as we wo
 - Comments are a great way to clarify functionality and how code is used. Don't comment every line, but feel free to describe (concisely) how functions are used above function definitions, classes, etc or only trickly lines of code.
 - If you need a paragraph-long comment to justify why the workaround is OK, the code is wrong - fix the code unless explicitly told otherwise.
 - When designing or building something new, ask me whenever you're unsure about a design or flow decision instead of assuming - unless the answer is obvious. I'd rather clarify upfront than redo work because of an assumption. When you ask, give your recommendation and suggested answers so I can just confirm or redirect or tell my decision.
+- If you notice anything wrong, a bug, a problem, or a security issue while working in any parts of the codebase, even if its not relevant to the current work, report it rather than silently fixing or ignoring it.
 
 ## Note
 
