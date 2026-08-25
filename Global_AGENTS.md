@@ -26,6 +26,13 @@ I'm sharing my preferences here so we can stay aligned as we work together.
 - When designing or building something new, ask me about any design or flow decision you're unsure about, unless the answer is obvious. I'd rather clarify upfront than redo work built on an assumption. When you ask, give your recommendation and suggested answers so I can confirm, redirect, or decide.
 - Report any bug, problem, or security issue you notice anywhere in the codebase, even if it's unrelated to the current work. Don't silently fix or ignore it.
 
+## Formatting rules
+
+- No semicolons, single quotes, no trailing commas, 2-space indent, avoid arrow parens.
+- Keep imports sorted and Tailwind classes in canonical order.
+- Match the surrounding file when it differs from these defaults.
+- Run the project's formatter on the files you touched.
+
 ## Note
 
 Repository or project-specific instructions, conventions, and architectural patterns take precedence over these global defaults.
