@@ -33,6 +33,24 @@ I'm sharing my preferences here so we can stay aligned as we work together.
 - Match the surrounding file when it differs from these defaults.
 - Run the project's formatter on the files you touched.
 
+## Writing rules
+
+These apply to every piece of English you write: comments, commit messages, error and log strings, UI copy, docs, PR descriptions.
+
+- Active voice, present tense, direct address (`you`, never "the user"). Imperative for steps.
+- Sentences under 20 words. Paragraphs of 2 to 4 sentences, one idea each.
+- Cut filler: `very`, `just`, `really`, `simply`. Never call something `easy`, `simple`, or `quick`.
+- Replace weasel words (`significantly`, `often`, `typically`) and vague quantifiers (`near-zero`, `sub-second`) with a specific figure or claim.
+- Name the literal step instead of metaphor verbs (`moves through`, `lands`, `hits`) and don't personify machines.
+- No rhetorical questions, no summary transitions recapping the previous paragraph (`With this setup complete…`).
+- Title Case for headings, buttons, nav labels, and titles. Sentence case for body prose, helper text, and validation messages.
+- Commit subjects are lowercase imperative sentences.
+- Error and log messages name the subject, the action, and the consequence. No apologies.
+- Punctuation: no em dashes, curly quotes, `…` not three dots, `64 KB` and `200 ms` with a space, bare `30s` for seconds.
+- Three or more list-shaped items become a list, introduced with a colon. Bold for UI elements and critical facts only, never for emphasis.
+- Code blocks carry a language tag, stay under 25 lines, and are explained in prose. Placeholders are descriptive `snake_case` (`your_access_token_here`), never `<TOKEN>` or `xxx`.
+- Fix non-compliant writing in files you already edit; don't start a repo-wide sweep unless asked.
+
 ## Note
 
 Repository or project-specific instructions, conventions, and architectural patterns take precedence over these global defaults.
