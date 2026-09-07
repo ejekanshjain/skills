@@ -25,6 +25,7 @@ I'm sharing my preferences here so we can stay aligned as we work together.
 - If you need a paragraph-long comment to justify why a workaround is OK, the code is wrong. Fix the code unless I tell you otherwise.
 - When designing or building something new, ask me about any design or flow decision you're unsure about, unless the answer is obvious. I'd rather clarify upfront than redo work built on an assumption. When you ask, give your recommendation and suggested answers so I can confirm, redirect, or decide.
 - Report any bug, problem, or security issue you notice anywhere in the codebase, even if it's unrelated to the current work. Don't silently fix or ignore it.
+- Ask for my explicit approval before downloading or installing packages, dependencies, tools, runtimes, or anything, including temporary or cached installations.
 
 ## Formatting rules
 
@@ -49,6 +50,7 @@ These apply to every piece of English you write: comments, commit messages, erro
 - Punctuation: no em dashes, curly quotes, `…` not three dots, `64 KB` and `200 ms` with a space, bare `30s` for seconds.
 - Three or more list-shaped items become a list, introduced with a colon. Bold for UI elements and critical facts only, never for emphasis.
 - Code blocks carry a language tag, stay under 25 lines, and are explained in prose. Placeholders are descriptive `snake_case` (`your_access_token_here`), never `<TOKEN>` or `xxx`.
+- Avoid repeating the same information across UI copy on a page. Give each heading, description, and helper text a distinct purpose.
 - Fix non-compliant writing in files you already edit; don't start a repo-wide sweep unless asked.
 
 ## Note
