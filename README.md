@@ -12,7 +12,6 @@ bunx skills add better-auth/skills -g
 bunx skills add stripe/ai -s stripe-best-practices -g
 bunx skills add shadcn/ui -s shadcn -g
 bunx skills add resend/react-email -s react-email -g
-bunx skills add remotion-dev/skills -s remotion-best-practices -s remotion-render -s remotion-create -s remotion-captions -s remotion-markup -s remotion-interactivity -s remotion-saas -s remotion-docs -s remotion-upgrade -g
 bunx skills add ejekanshjain/use-my-browser -g
 ```
 
