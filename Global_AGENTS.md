@@ -12,21 +12,30 @@ I enjoy building secure, production-ready, complex systems while keeping their i
 
 I'm sharing my preferences here so we can stay aligned as we work together.
 
+## How To Report To Me
+
+I don't know much about the code while working with agents. Write every reply for someone who uses the product but has not seen the code. This covers progress updates, results, reviews, findings, plans, and answers to my questions.
+
+- Describe what a person using the product sees or experiences, and what the consequence is.
+- Don't name files, functions, variables, or line numbers. Say "saving a draft always fails", not "saveDraft in draftService.ts:88 throws".
+- Translate output from subagents, tools, and skills into plain language before you send it to me.
+- This overrides any tool, skill, or editor instruction to cite file paths, line numbers, or clickable code links.
+- Include code details only when I ask for them. Asking means I name a file, function, or lines, or I ask where something lives in the code. Then give the code-level details in that reply.
+
 ## Coding preferences
 
-- Keep things simple. Channel “yagni” energy unless told otherwise.
+- Keep things simple. Channel "yagni" energy unless told otherwise.
 - Type safety is useful; take advantage of it.
 - Don't write code that introduces security vulnerabilities. Include authorization checks and input validation, and follow security best practices.
 - Don't be scared to propose bold ideas or breaking changes if they can meaningfully benefit our work.
 - Be careful with destructive actions I haven't explicitly requested.
 - Write performant, optimized code.
-- Tests are good! Endless smoke tests and “regression tests” for feature deletions are much less good. Tests should be focused, not slop.
+- Tests are good! Endless smoke tests and "regression tests" for feature deletions are much less good. Tests should be focused, not slop.
 - Comments are a great way to clarify functionality and how code is used. Don't comment every line. Concisely describe how functions and classes are used above their definitions, and explain only the tricky lines.
 - If you need a paragraph-long comment to justify why a workaround is OK, the code is wrong. Fix the code unless I tell you otherwise.
 - When designing or building something new, ask me about any design or flow decision you're unsure about, unless the answer is obvious. I'd rather clarify upfront than redo work built on an assumption. When you ask, give your recommendation and suggested answers so I can confirm, redirect, or decide.
 - Report any bug, problem, or security issue you notice anywhere in the codebase, even if it's unrelated to the current work. Don't silently fix or ignore it.
 - Ask for my explicit approval before downloading or installing packages, dependencies, tools, runtimes, or anything, including temporary or cached installations.
-- When you report what you did, explain it concisely in plain human-readable language that describes behavior, not code. I don't know much about the code while working with agents, so don't name files, functions, or variables unless I ask. When I point you to a specific part of the codebase, such as a function or lines of code, and ask you to change it, include the code-level details in your reply.
 
 ## Formatting rules
 
