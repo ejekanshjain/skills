@@ -26,6 +26,7 @@ I'm sharing my preferences here so we can stay aligned as we work together.
 - When designing or building something new, ask me about any design or flow decision you're unsure about, unless the answer is obvious. I'd rather clarify upfront than redo work built on an assumption. When you ask, give your recommendation and suggested answers so I can confirm, redirect, or decide.
 - Report any bug, problem, or security issue you notice anywhere in the codebase, even if it's unrelated to the current work. Don't silently fix or ignore it.
 - Ask for my explicit approval before downloading or installing packages, dependencies, tools, runtimes, or anything, including temporary or cached installations.
+- When you report what you did, explain it concisely in plain human-readable language that describes behavior, not code. I don't know much about the code while working with agents, so don't name files, functions, or variables unless I ask. When I point you to a specific part of the codebase, such as a function or lines of code, and ask you to change it, include the code-level details in your reply.
 
 ## Formatting rules
 
