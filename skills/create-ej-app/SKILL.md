@@ -84,12 +84,18 @@ Then check, inside the project:
 
 ```bash
 cd PROJECT_NAME
+git branch --show-current
 git log --oneline
 git status --short
 git check-ignore .env
 ```
 
-**Expected:** one initial commit, no uncommitted changes, and `.env` printed (it is ignored, so its secrets were not committed). If Git is initialized but there is no commit, commit now, but only if `.env` is ignored:
+**Expected:** the branch is `main` (or the user's own configured default), one initial commit, no uncommitted changes, and `.env` printed (it is ignored, so its secrets were not committed). If the branch is `master`, rename it:
+
+```bash
+git branch -m master main
+```
+ If Git is initialized but there is no commit, commit now, but only if `.env` is ignored:
 
 ```bash
 git add -A
@@ -122,6 +128,15 @@ git commit -m "update dependencies to their latest versions"
 
 ## 8. Hand Over
 
-Tell the user where the project is and what to do next, taken from the README's setup and development sections and the CLI's final output: which `.env` values to fill in, how to create the database, and how to start the app. Point them to the project's own `README.md` and `AGENTS.md` before building features.
+Tell the user where the project is and what to do next, taken from the README's setup and development sections and the CLI's final output: which `.env` values to fill in, how to create the database, and how to start the app.
+
+Then ask the user to **start a new agent session inside the project folder** before building anything, for example:
+
+```bash
+cd LOCATION/PROJECT_NAME
+claude   # or codex, gemini, opencode: whichever agent they use
+```
+
+The project ships its own `AGENTS.md` (and `CLAUDE.md`) with the stack, conventions and commands. Agents read those files from the folder a session starts in, so a session started elsewhere misses them. Don't start building features in the current session.
 
 Never commit `.env`, and never paste its secrets into chat.
