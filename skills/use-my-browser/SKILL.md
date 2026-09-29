@@ -1,14 +1,6 @@
 ---
 name: use-my-browser
-description: >
-  Connect to the user's installed Chromium browser (Chrome, Chromium, or Brave)
-  over CDP with Playwright and drive the real signed-in profile. Use when the
-  user says "use my browser", "use my chrome", "use my brave", "open in my
-  browser", "drive my browser", "connect to my browser", wants screenshots or
-  clicks in their actual system browser, or runs /use-my-browser. Prefer this
-  over headless browsers, in-app browsers, and page-fetch tools when they ask
-  to use their own browser. Batch known multi-step flows into one script so
-  the live browser stays fast.
+description: Use when the user asks you to use their own browser (Chrome, Brave or Chromium) to open pages, click around or take screenshots while signed in.
 license: MIT
 metadata:
   author: ejekanshjain

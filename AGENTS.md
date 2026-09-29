@@ -11,7 +11,7 @@ This repo publishes open-source agent skills in the [Agent Skills](https://agent
 ## SKILL.md Rules
 
 - `name`: lowercase letters, digits and single hyphens, at most 64 characters, equal to the folder name.
-- `description`: at most 1024 characters. Say what the skill does and when to use it, with the phrases people type ("make a demo video").
+- `description`: one or two plain sentences saying when to use the skill, starting with "Use when". No jargon; details belong in the body.
 - `license: MIT`. Add `compatibility` only for real requirements (runtimes, system tools). Put `author` and `version` under `metadata`.
 - Keep the body under 500 lines. Move long material to `references/` and link it one level deep, with paths relative to the skill folder.
 - Refer to the skill's own folder as `SKILL_DIR`, never an absolute path.

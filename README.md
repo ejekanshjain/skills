@@ -2,10 +2,11 @@
 
 Open-source skills for coding agents. They follow the [Agent Skills](https://agentskills.io) format, so they work in Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, Grok, OpenCode and any other agent that reads `SKILL.md` files.
 
-| Skill | What it does |
+| Skill | Use it when |
 | --- | --- |
-| [product-video](skills/product-video) | Helps your agent make product demo videos of your web app in any style: guided tours, launch trailers, feature clips, social cuts or hero loops. Includes voice-over scripts, narration audio, music and captions, plus a toolkit that records your real app with a scripted cursor, cards and smooth fades. |
-| [use-my-browser](skills/use-my-browser) | Drives your real Chrome, Chromium or Brave profile, with your signed-in sessions, over the DevTools Protocol. |
+| [product-video](skills/product-video) | You want a demo or promo video of your app, or a voice-over script for one. |
+| [use-my-browser](skills/use-my-browser) | You want the agent to work in your own signed-in browser. |
+| [git-history-cleanup](skills/git-history-cleanup) | Your Git repository is slow to clone because of big files committed long ago. |
 
 ## Install
 
@@ -78,6 +79,21 @@ The agent detects your installed Chromium browsers and profiles, launches the on
 **Requires:** Node.js and Chrome, Chromium or Brave. The skill installs `playwright-core` into its own folder on first use. It downloads no browser.
 
 **Security:** anything on your machine that can reach port 9222 can control the browser, including cookies and signed-in sessions. Never expose that port or bind it to `0.0.0.0`.
+
+## git-history-cleanup
+
+Say **my repo is huge because of old videos**, or **remove big files from Git history**.
+
+The agent walks you through removing large files that were deleted long ago but still bloat every clone. It uses `git filter-repo`, one step at a time, and stops after every command to show you the result. You review the list of files to delete yourself, and nothing is rewritten or pushed until you type `rewrite` and `push`. Before and after, it proves that every branch and tag keeps exactly the same files. It keeps a full backup, so you can restore the original history.
+
+**Use when:**
+
+- Fresh clones are slow because of videos, images, archives or binaries deleted long ago
+- You want to shrink a repository without changing any current files
+
+**Requires:** `git` and `git-filter-repo`. The whole skill is one file of shell commands for Bash, Zsh and Fish.
+
+**Warning:** this rewrites history. Everyone who uses the repository must stop pushing during the cleanup and re-clone afterwards.
 
 ## Repository Layout
 

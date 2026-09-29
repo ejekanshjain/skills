@@ -1,6 +1,6 @@
 ---
 name: product-video
-description: Make product demo videos of a web app, in whatever style the user wants (guided tours, launch trailers, feature clips, social cuts, hero loops, onboarding walkthroughs), with optional voice-over script, narration audio, music and captions. Includes an optional toolkit that records a real app in a headless browser with a gliding cursor, title cards and smooth fades, and exports MP4, WebM, poster, captions and a timed voice-over sheet. Use when the user wants a demo video, product tour, walkthrough, explainer, promo, screen recording, voice-over script or website video of their own app, or wants to update one after UI changes.
+description: Use when the user wants a demo or promo video of their app, a product walkthrough, or a voice-over script for one.
 license: MIT
 compatibility: The bundled toolkit needs Node.js 22+ (or Bun), ffmpeg, and Chrome, Chromium, Brave or Edge. Any other tools are up to the agent and the user.
 metadata:

@@ -4,13 +4,13 @@
     "name": "Ekansh Jain"
   },
   "metadata": {
-    "description": "Open-source agent skills: product demo videos of your web app, and driving your real browser.",
+    "description": "Agent skills for product videos, driving your own browser, and shrinking Git history.",
     "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "product-video",
-      "description": "Make product demo videos of your web app in any style, with voice-over scripts, narration, music and captions, and a toolkit that records your real app.",
+      "description": "Use when the user wants a demo or promo video of their app, a product walkthrough, or a voice-over script for one.",
       "source": "./",
       "strict": false,
       "skills": [
@@ -19,11 +19,20 @@
     },
     {
       "name": "use-my-browser",
-      "description": "Drive your real Chrome, Chromium or Brave profile, with your signed-in sessions, over the DevTools Protocol.",
+      "description": "Use when the user asks you to use their own browser (Chrome, Brave or Chromium) to open pages, click around or take screenshots while signed in.",
       "source": "./",
       "strict": false,
       "skills": [
         "./skills/use-my-browser"
+      ]
+    },
+    {
+      "name": "git-history-cleanup",
+      "description": "Use when a Git repository is too big or slow to clone because of large files committed in the past, and the user wants them removed from its history.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/git-history-cleanup"
       ]
     }
   ]
