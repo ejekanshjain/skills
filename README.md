@@ -4,7 +4,7 @@ Open-source skills for coding agents. They follow the [Agent Skills](https://age
 
 | Skill | What it does |
 | --- | --- |
-| [product-video](skills/product-video) | Records a polished, silent product tour of your web app: title cards, a gliding cursor, captions and smooth fades, exported as MP4, WebM and a poster. Also makes seamless hero loops. |
+| [product-video](skills/product-video) | Helps your agent make product demo videos of your web app in any style: guided tours, launch trailers, feature clips, social cuts or hero loops. Includes voice-over scripts, narration audio, music and captions, plus a toolkit that records your real app with a scripted cursor, cards and smooth fades. |
 | [use-my-browser](skills/use-my-browser) | Drives your real Chrome, Chromium or Brave profile, with your signed-in sessions, over the DevTools Protocol. |
 
 ## Install
@@ -41,25 +41,28 @@ cp -R skills/skills/product-video ~/.claude/skills/   # or ~/.agents/skills, ~/.
 
 ## product-video
 
-Ask your agent for **a demo video of this app**, **a product tour**, or **a hero video for the homepage**.
+Ask your agent for **a demo video of this app**, **a launch trailer**, **a narrated walkthrough** or **a hero video for the homepage**.
 
-The agent plans the story with you, prepares realistic sample data, writes a scene config in your project, records it with a headless browser, checks every frame for flashes, and publishes it to your site. Re-recording one scene after a UI change takes about 1.5 minutes.
+The agent works out the goal, style, length and voice with you, then picks the approach that fits. There are no fixed formats. It can prepare realistic sample data, write a voice-over script timed to the footage, and produce narration audio with the voice you choose. It adds music and captions, checks every frame for flashes, and publishes the video to your site.
+
+The bundled toolkit is optional and easy to extend. It records your real app in a headless browser, with scenes written as plain JavaScript and a gliding cursor. Title cards, captions and fades are all optional. Scenes stretch to fit their narration. Re-recording one scene after a UI change takes about 1.5 minutes.
 
 **Use when:**
 
-- You want a marketing, demo or onboarding video of your own web app
+- You want a marketing, demo, tutorial or onboarding video of your own web app
+- You need a voice-over script or narration timed to your product's screens
 - Your UI changed and the existing video is out of date
 - You need a short autoplaying loop for a landing page
 
-**Requires:** Node.js 22+ or Bun, ffmpeg, and Chrome, Chromium, Brave or Edge. The scripts have no npm dependencies.
+**Toolkit requires:** Node.js 22+ or Bun, ffmpeg, and Chrome, Chromium, Brave or Edge. The scripts have no npm dependencies.
 
 **Includes:**
 
-- `scripts/make.mjs`: records the scenes and exports the video
+- `scripts/make.mjs`: records segments and exports the video, poster, captions, audio mix and a timed voice-over sheet
 - `scripts/check.mjs`: finds one-frame flashes and harsh fades, writes a contact sheet
 - `scripts/snap.mjs`: screenshots app pages at the recording size, for planning
-- `assets/tour.config.mjs`: the scene config template
-- `references/`: guides for sample data, storyboarding, recording pitfalls and embedding
+- `assets/tour.config.mjs`: the config template, with every option explained
+- `references/`: guides for story and pacing, voice-over, sample data, recording pitfalls and embedding
 
 ## use-my-browser
 

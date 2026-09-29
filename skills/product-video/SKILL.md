@@ -1,88 +1,91 @@
 ---
 name: product-video
-description: Make a polished, silent product tour video of a web app by scripting a headless browser, with a fake cursor, captions, title cards and smooth fades, exported as MP4, WebM and a poster. Also makes short seamless hero loops. Use when the user wants a demo video, product tour, walkthrough, marketing video, explainer, screen recording or website hero video of their own app, or wants to re-record one after UI changes. Covers preparing realistic sample data, storyboarding, recording, quality checks and embedding the video on a website.
+description: Make product demo videos of a web app, in whatever style the user wants (guided tours, launch trailers, feature clips, social cuts, hero loops, onboarding walkthroughs), with optional voice-over script, narration audio, music and captions. Includes an optional toolkit that records a real app in a headless browser with a gliding cursor, title cards and smooth fades, and exports MP4, WebM, poster, captions and a timed voice-over sheet. Use when the user wants a demo video, product tour, walkthrough, explainer, promo, screen recording, voice-over script or website video of their own app, or wants to update one after UI changes.
 license: MIT
-compatibility: Requires Node.js 22+ (or Bun), ffmpeg, and Chrome, Chromium, Brave or Edge. Records a web app the agent can run locally or reach on staging.
+compatibility: The bundled toolkit needs Node.js 22+ (or Bun), ffmpeg, and Chrome, Chromium, Brave or Edge. Any other tools are up to the agent and the user.
 metadata:
   author: ejekanshjain
-  version: "1.0.0"
+  version: '1.0.0'
 ---
 
 # Product Video
 
-Record a web app as a narrated-by-captions product tour: numbered title cards, a gliding cursor, caption badges and smooth fades, rendered at 1080p. Everything is scripted, so re-recording after a UI change takes minutes.
+Help the user make a video that shows their product at its best. There is no required length, structure or style: a 15-second feature clip, a 3-minute narrated walkthrough, a vertical social cut and a silent homepage loop are all good answers to different requests. Decide with the user, then choose the approach that serves the video.
 
-`SKILL_DIR` is the directory that contains this file. Scripts need no npm install.
+`SKILL_DIR` is the directory that contains this file.
 
-| Script | Use |
-| --- | --- |
-| `scripts/make.mjs` | Record scenes from a config and export the video |
-| `scripts/check.mjs` | Find flashes and harsh jumps, write a contact sheet |
-| `scripts/snap.mjs` | Screenshot app pages at the recording size, for planning |
-| `assets/tour.config.mjs` | Config template to copy into the project |
+## Work With the User
 
-## 1. Agree on the Plan
+Before building, agree on what matters, and offer a recommendation for each:
 
-Ask the user before building, and recommend an answer for each:
+- **Goal and audience:** who watches, where (homepage, sales call, social feed, docs, app store), and what they should do after.
+- **Format:** length, aspect ratio, pacing, sound on or off, captions, languages.
+- **Style:** calm product tour, energetic launch trailer, step-by-step tutorial, before-and-after story, or something else they describe. Reference videos they like help.
+- **Story:** which moments of the product prove the value. Start from the customer's problem, not the feature list.
+- **Voice:** silent with on-screen text, a narration script only, or finished narration audio. Ask who records or generates the voice.
+- **Data:** what appears on screen. Real customer data never should.
 
-- **Data:** use existing demo data, or build a fictional sample dataset (recommended when screens are empty or hold real customers). Building one may mean wiping a local database: get explicit approval and confirm it isn't production.
-- **Format:** a 60 to 90 second tour with cursor and captions (recommended), a 20 to 30 second silent loop for a hero section, or both.
-- **Story:** the 5 to 8 screens that show the product's core loop.
-- **Placement:** where the video goes on the site, and whether it autoplays (loops only) or waits for play (tours).
+Confirm anything destructive (wiping a database, overwriting published files) and anything that costs money or sends data to a third party (paid voice services, stock music) before doing it.
 
-## 2. Check Tools
+## Choose How to Make It
 
-Run `node --version` (22+ needed, or use `bun`), `ffmpeg -version`, and confirm a Chromium-based browser exists (`CHROMIUM_PATH` overrides detection). Don't install anything without the user's approval.
+The bundled toolkit is one way, not the only way. Pick what fits the request:
 
-## 3. Prepare the Data
+- **The toolkit** (below): records the real app with a scripted cursor, title cards, captions and fades, then adds narration and music. Fast to re-record after UI changes.
+- **Extend the toolkit:** the scripts are small and readable. Add animations, zooms, overlays, transitions, extra ffmpeg filters or new scene helpers when the idea needs them. Copy them into the project if you change them a lot.
+- **Other tools** the user already has or approves: Playwright, a motion graphics or video framework, a screen recorder, a video editor project, design exports. Combine them: for example, record screens with the toolkit and compose them elsewhere.
 
-Follow [references/sample-data.md](references/sample-data.md). In short: invent the brand and competitors, tell a believable story over time, derive totals with the app's own code, leave no spinners or empty states, and never touch production or real people's data.
+Whatever you use, make the result reproducible: keep the config, scripts and assets in the project so the video can be rebuilt after the product changes.
 
-## 4. Plan the Scenes
+## The Toolkit
 
-1. Copy `assets/tour.config.mjs` into the project, for example `video/tour.config.mjs`.
-2. Fill in `baseUrl`, `signIn` (a demo account), `theme` (brand dark color and accent), `hide` (dev overlay selectors), `prepare` (page tweaks no selector reaches, such as dismissing banners), and the intro and outro cards.
-3. Screenshot candidate screens: `node SKILL_DIR/scripts/snap.mjs video/tour.config.mjs /dashboard /reports --full`, then look at the images.
-4. Write one scene per step, following [references/storyboard.md](references/storyboard.md). Aim the cursor with `s.find("visible text")`. Preselect items with URL parameters.
+| File                     | What it does                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `scripts/make.mjs`       | Records segments from a config, then exports the video, poster, captions, audio mix, timeline and voice-over sheet |
+| `scripts/snap.mjs`       | Screenshots app pages at the recording size, for planning and checking data                                        |
+| `scripts/check.mjs`      | Finds one-frame flashes and harsh brightness jumps, writes a contact sheet                                         |
+| `assets/tour.config.mjs` | Config template with every option explained                                                                        |
 
-Scene API inside `act: async (s) => { … }`:
-
-- `s.move(x, y, ms)`, `s.click(x?, y?)`, `s.scroll(dy, ms, containerSelector?)`, `s.pause(ms)`
-- `s.find(text)` returns `{ x, y }` of the smallest visible element starting with that text
-- `s.page.eval(js)`, `s.page.goto(url)` for anything else
-
-## 5. Record
-
-Start the app, then:
+The scripts need no npm install. Typical use:
 
 ```bash
-node SKILL_DIR/scripts/make.mjs video/tour.config.mjs            # every scene
-node SKILL_DIR/scripts/make.mjs video/tour.config.mjs answers    # re-record one
-node SKILL_DIR/scripts/make.mjs video/tour.config.mjs --loop     # the hero loop
-```
-
-It records each scene into the system temp folder, encodes it with fades drawn at a steady 30 fps, joins the clips, and writes `<name>.mp4`, `<name>.webm` and `<name>-poster.jpg` to `output.dir`. A full tour takes 3 to 4 minutes; re-recording one scene reuses the others.
-
-Never click anything in a scene that changes data, sends messages or spends money.
-
-## 6. Check
-
-```bash
+node SKILL_DIR/scripts/snap.mjs video/tour.config.mjs /dashboard --full   # look before you script
+node SKILL_DIR/scripts/make.mjs video/tour.config.mjs                     # record everything, export
+node SKILL_DIR/scripts/make.mjs video/tour.config.mjs pricing              # re-record one segment
+node SKILL_DIR/scripts/make.mjs video/tour.config.mjs --export            # new narration or music, no re-recording
+node SKILL_DIR/scripts/make.mjs video/tour.config.mjs --loop              # the silent loop
 node SKILL_DIR/scripts/check.mjs public/video/product-tour.mp4
 ```
 
-It exits 1 when it finds a one-frame flash, and prints the path of a contact sheet. Look at the contact sheet: every step should show its key moment with no spinner, error or debug overlay. Fix scenes and re-record only those.
+What a config controls, all optional beyond `baseUrl` and `scenes`:
 
-Then play the file in the user's real browser, not headless: press play, wait 8 seconds, seek to the middle. Headless Chromium decodes in software and can pass files a real GPU decoder rejects. See [references/pitfalls.md](references/pitfalls.md) when anything looks wrong.
+- **Look:** viewport and output size (any aspect ratio, such as a phone viewport for vertical video), theme colors and font, `theme.css` to restyle cards, captions and cursor completely.
+- **Segments:** an optional intro and outro card, then scenes. Each scene can have a title card or none (`card: null`), a caption or none, the cursor or none (`cursor: false`), and a minimum screen time.
+- **Action:** each scene's `act(s, page)` is plain async JavaScript. Use the helpers (`s.move`, `s.click`, `s.scroll`, `s.find`, `s.pause`, `s.caption`) or anything the browser allows through `page.eval` and `page.send` (raw DevTools Protocol): type into forms, open menus, trigger animations, inject overlays, highlight elements.
+- **Sound:** `narration` text per segment, `voiceover` audio per segment (the scene holds until it ends), one whole-video voice-over file, background music.
+- **Timing:** `pace`, `cardMs` and `fadeMs` tune the rhythm. The config template explains each.
 
-## 7. Publish
+Every export also writes, next to the config, a timeline of each segment's start and end, and a voice-over sheet with each segment's speaking window and word budget. Read [references/voiceover.md](references/voiceover.md) when the video has narration.
 
-Follow [references/embedding.md](references/embedding.md): tours wait for play with `preload="none"` and a poster, loops autoplay muted only near the viewport and respect reduced motion. Say on the page that the video shows sample data.
+Never click anything during recording that changes real data, sends messages or spends money.
 
-## 8. Leave It Repeatable
+## Guides
 
-Keep the config and the seed script in the project. Add package scripts (for example `video` and `db:seed:demo`) and document them in the project's README or agent instructions, including the demo login and "reseed before recording, so dates look fresh".
+Read these when they apply. They collect what worked, not rules:
+
+- [references/sample-data.md](references/sample-data.md): building a believable fictional dataset safely.
+- [references/storyboard.md](references/storyboard.md): story shapes, scene ideas and pacing for different kinds of video.
+- [references/voiceover.md](references/voiceover.md): writing narration to the timeline, producing audio, music and captions.
+- [references/pitfalls.md](references/pitfalls.md): recording problems already solved (decode errors, flashes, stutter, blur) and how.
+- [references/embedding.md](references/embedding.md): publishing on a website: autoplay rules, posters, sound, captions.
+
+## Check Before Calling It Done
+
+- Watch it, or look at `check.mjs`'s contact sheet: no spinners, empty states, errors, debug overlays or real people's data.
+- `check.mjs` reports no one-frame flashes. Harsh jumps are fine when they are deliberate cuts.
+- Every claim on screen and in the narration is true of the product.
+- Play the published file in a real browser, not only headless: press play, seek, and listen if it has sound.
 
 ## Report to the User
 
-Describe what the viewer sees, not the scripts: the video's length, its steps, where it appears, file sizes, and anything you couldn't verify. Mention real bugs you noticed in the app while filming.
+Describe what the viewer sees and hears: length, story, where it appears, file sizes, anything you couldn't verify, and how to rebuild it. Mention real bugs you noticed in the product while filming.

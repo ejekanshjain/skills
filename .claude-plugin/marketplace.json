@@ -4,23 +4,27 @@
     "name": "Ekansh Jain"
   },
   "metadata": {
-    "description": "Open-source agent skills: product videos of your web app and driving your real browser.",
+    "description": "Open-source agent skills: product demo videos of your web app, and driving your real browser.",
     "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "product-video",
-      "description": "Record a polished, silent product tour or hero loop of your web app, with sample data, captions, cursor and smooth fades.",
+      "description": "Make product demo videos of your web app in any style, with voice-over scripts, narration, music and captions, and a toolkit that records your real app.",
       "source": "./",
       "strict": false,
-      "skills": ["./skills/product-video"]
+      "skills": [
+        "./skills/product-video"
+      ]
     },
     {
       "name": "use-my-browser",
       "description": "Drive your real Chrome, Chromium or Brave profile, with your signed-in sessions, over the DevTools Protocol.",
       "source": "./",
       "strict": false,
-      "skills": ["./skills/use-my-browser"]
+      "skills": [
+        "./skills/use-my-browser"
+      ]
     }
   ]
 }

@@ -41,6 +41,7 @@ const stageScript = (theme, hide) => {
       transition: opacity .5s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
     #__pv_curtain.text > * { opacity: 1; transform: none; }
     #__pv_curtain.text > .s { transition-delay: .12s; }
+    ${theme.css ?? ""}
   `;
   return `(() => {
     if (window.__pv) return true;

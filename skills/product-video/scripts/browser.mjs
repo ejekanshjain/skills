@@ -6,7 +6,8 @@ import path from "node:path";
 // A minimal Chrome DevTools Protocol driver for a headless Chromium browser.
 // No dependencies: it needs Node 22+ (global fetch and WebSocket) or Bun.
 
-export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+export const sleep = (ms) =>
+  new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
 
 const LINUX = [
   "chromium",

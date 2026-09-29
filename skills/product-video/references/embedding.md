@@ -7,6 +7,9 @@
 - `<name>.webm`: VP9, about 35% smaller. Modern browsers pick it first.
 - `<name>.mp4`: H.264, plays everywhere, including Safari.
 - `<name>-poster.jpg`: the frame shown before playback.
+- `<name>.vtt`: captions, when segments have narration.
+
+Both video files carry the soundtrack when the config adds narration or music (AAC in MP4, Opus in WebM).
 
 A 75-second 1080p tour comes out at 5 to 8 MB. Serve the files as static assets from the site's public folder or a CDN.
 
@@ -27,6 +30,20 @@ This is the right default for tours. Nothing downloads until the viewer asks.
 - List WebM first and MP4 second.
 - Size it with CSS (`width: 100%; aspect-ratio: 16 / 9`) so the layout doesn't jump.
 
+## With Sound
+
+Browsers block autoplay with sound, so narrated videos always wait for play. Add the captions track so people watching muted, or who can't hear, still follow:
+
+```html
+<video controls playsinline preload="none" poster="/video/product-tour-poster.jpg">
+  <source src="/video/product-tour.webm" type="video/webm" />
+  <source src="/video/product-tour.mp4" type="video/mp4" />
+  <track kind="captions" src="/video/product-tour.vtt" srclang="en" label="English" default />
+</video>
+```
+
+Serve the `.vtt` file from the same origin, or with CORS headers, or the browser ignores it.
+
 ## Loop: Autoplays Muted in a Hero
 
 Browsers only autoplay muted video. Load it only near the viewport, pause it off screen, and respect reduced motion:
@@ -42,7 +59,7 @@ Browsers only autoplay muted video. Load it only near the viewport, pause it off
 - Put the tour where people decide: under the homepage hero, on the features page, and on the demo booking page.
 - Say it is sample data, for example "A tour of a sample workspace for a fictional store."
 - Don't hardcode the duration in page copy; re-recordings change it.
-- The video has no sound, so it needs no captions file. Give the element an `aria-label` that describes it.
+- Give the element an `aria-label` that describes it. Silent videos with on-screen text need no captions file; narrated ones do.
 
 ## After Publishing
 
