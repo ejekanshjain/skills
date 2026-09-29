@@ -1,6 +1,6 @@
 ---
 name: global-instructions
-description: Use when the user wants to set up or update their personal global instructions for coding agents (CLAUDE.md, AGENTS.md) on this computer.
+description: Use when the user wants to set up or update their personal global instructions (CLAUDE.md, AGENTS.md) and favorite skills for coding agents on this computer.
 license: MIT
 metadata:
   author: ejekanshjain
@@ -65,13 +65,54 @@ For each agent the user chose:
 
 Write plain text with Unix line endings, ending in a newline. Don't use symlinks: some agents and Windows handle them poorly.
 
-## 5. Check and Report
+## 5. Check the Files
 
-Read each written file back and confirm it contains the confirmed name and no `{{` placeholders. Then report:
+Read each written file back and confirm it contains the confirmed name and no `{{` placeholders.
+
+## 6. Offer Recommended Skills
+
+Ask whether the user also wants the skills the template author uses most. They are optional; skip this step if the user declines. Show the list and let them pick groups or single skills:
+
+| Skills | What they help with |
+| --- | --- |
+| `find-skills` | Finding and installing more skills |
+| `docx`, `pdf`, `pptx`, `xlsx` | Reading and creating Word, PDF, PowerPoint and Excel files |
+| `frontend-design` | Distinctive, polished interface design |
+| `skill-creator` | Writing and improving your own skills |
+| `vercel-composition-patterns`, `vercel-react-best-practices`, `vercel-react-view-transitions`, `web-design-guidelines` | React and Next.js patterns, performance, page transitions and UI reviews |
+| `ai-sdk`, `ai-elements`, `streamdown` | Building AI features and chat interfaces |
+| `workflow`, `workflow-init` | Durable background jobs |
+| Better Auth skills | Authentication setup and security |
+| `stripe-best-practices` | Stripe payments and billing |
+| `shadcn` | shadcn/ui components |
+| `react-email` | Email templates |
+
+Installing downloads each skill from GitHub, so confirm before running. Install only what the user picked, with one command per source:
+
+```bash
+bunx skills add vercel-labs/skills -s find-skills -g
+bunx skills add anthropics/skills -s docx -s pdf -s pptx -s xlsx -s frontend-design -s skill-creator -g
+bunx skills add vercel-labs/agent-skills -s vercel-composition-patterns -s vercel-react-best-practices -s vercel-react-view-transitions -s web-design-guidelines -g
+bunx skills add vercel/ai -s ai-sdk -g
+bunx skills add vercel/ai-elements -s ai-elements -g
+bunx skills add vercel/streamdown -s streamdown -g
+bunx skills add vercel/workflow -s workflow -s workflow-init -g
+bunx skills add better-auth/skills -g
+bunx skills add stripe/ai -s stripe-best-practices -g
+bunx skills add shadcn/ui -s shadcn -g
+bunx skills add resend/react-email -s react-email -g
+```
+
+Drop the `-s` names the user didn't pick, and skip sources with nothing picked. Use `npx` if Bun isn't installed. The installer asks which agents to install for; choose the ones from step 1, or pass them with `-a` and skip its prompts with `-y`. Show each command's result, and report any that failed.
+
+## 7. Report
+
+Tell the user:
 
 - Which files you created, replaced, merged or skipped, with their paths.
 - Where each backup is.
-- That the instructions apply to new sessions: running agents may need a restart.
+- Which skills you installed, if any.
+- That the instructions and skills apply to new sessions: running agents may need a restart.
 - That project instructions (a repository's own `AGENTS.md` or `CLAUDE.md`) still take precedence, as the file's last section says.
 
 To update later, run the same steps: identical files are skipped, and changed ones are backed up first.

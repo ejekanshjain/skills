@@ -7,7 +7,8 @@ Open-source skills for coding agents. They follow the [Agent Skills](https://age
 | [product-video](skills/product-video) | You want a demo or promo video of your app, or a voice-over script for one. |
 | [use-my-browser](skills/use-my-browser) | You want the agent to work in your own signed-in browser. |
 | [git-history-cleanup](skills/git-history-cleanup) | Your Git repository is slow to clone because of big files committed long ago. |
-| [global-instructions](skills/global-instructions) | You want your personal instructions set up for every coding agent on your computer. |
+| [create-ej-app](skills/create-ej-app) | You want to start a new web app, SaaS product or API. |
+| [global-instructions](skills/global-instructions) | You want your personal instructions and favorite skills set up for every coding agent on your computer. |
 
 ## Install
 
@@ -100,12 +101,24 @@ The agent walks you through removing large files that were deleted long ago but 
 
 Say **set up my global agent instructions**.
 
-The agent writes one personal instructions file for Claude Code, Codex, Gemini CLI and OpenCode: how to report to you, coding preferences, formatting rules and writing rules. It suggests your name from your Git profile or computer and asks you to confirm it. It lets you adjust the About Me section and any rules, and shows the final text before writing. Existing files are backed up first, and you choose to replace, merge or skip each one.
+The agent writes one personal instructions file for Claude Code, Codex, Gemini CLI and OpenCode: how to report to you, coding preferences, formatting rules and writing rules. It suggests your name from your Git profile or computer and asks you to confirm it. It lets you adjust the About Me section and any rules, and shows the final text before writing. Existing files are backed up first, and you choose to replace, merge or skip each one. Then it offers popular skills for documents, design, React, AI features, auth, payments and email, and installs only the ones you pick.
 
 **Use when:**
 
 - You set up a new computer and want your agents to work your way from day one
 - You changed your preferences and want every agent updated
+
+## create-ej-app
+
+Say **start a new project** or **create a SaaS app**.
+
+The agent asks what you're building, reads the templates [create-ej-app](https://github.com/ejekanshjain/create-ej-app) offers today straight from its repository, and shows you each stack. It uses the tool only after you confirm the stack fits. It suggests a name and a location (`~/Developer` by default when it exists), creates the project with its initial commit, and offers to update the packages you pick to their latest versions.
+
+**Use when:**
+
+- You're starting a new web app, SaaS product or API, and one of create-ej-app's templates fits
+
+**Requires:** Bun, Git and internet access.
 
 ## Repository Layout
 
