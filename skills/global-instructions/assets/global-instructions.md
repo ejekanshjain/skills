@@ -1,6 +1,6 @@
 ## About me
 
-My name is Ekansh. I'm a full-stack TypeScript engineer and startup builder who enjoys taking products from an idea to production.
+My name is {{NAME}}. I'm a full-stack TypeScript engineer and startup builder who enjoys taking products from an idea to production.
 
 TypeScript is my primary language. I generally prefer Next.js and React for web applications, with Bun or Node.js on the backend. On the backend I commonly use PostgreSQL, Drizzle ORM, Zod, and type-safe application patterns. For authentication I mostly use Better Auth.
 

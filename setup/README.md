@@ -21,7 +21,4 @@ bunx skills add ejekanshjain/skills -g
 
 ## Global Agent Instructions
 
-```bash
-cp setup/Global_AGENTS.md ~/.codex/AGENTS.md
-cp setup/Global_AGENTS.md ~/.claude/CLAUDE.md
-```
+My global instructions live in the [global-instructions](../skills/global-instructions) skill. Ask any agent to "set up my global agent instructions" and it writes them for Claude Code, Codex, Gemini CLI and OpenCode, with backups of existing files.

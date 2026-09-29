@@ -7,6 +7,7 @@ Open-source skills for coding agents. They follow the [Agent Skills](https://age
 | [product-video](skills/product-video) | You want a demo or promo video of your app, or a voice-over script for one. |
 | [use-my-browser](skills/use-my-browser) | You want the agent to work in your own signed-in browser. |
 | [git-history-cleanup](skills/git-history-cleanup) | Your Git repository is slow to clone because of big files committed long ago. |
+| [global-instructions](skills/global-instructions) | You want your personal instructions set up for every coding agent on your computer. |
 
 ## Install
 
@@ -94,6 +95,17 @@ The agent walks you through removing large files that were deleted long ago but 
 **Requires:** `git` and `git-filter-repo`. The whole skill is one file of shell commands for Bash, Zsh and Fish.
 
 **Warning:** this rewrites history. Everyone who uses the repository must stop pushing during the cleanup and re-clone afterwards.
+
+## global-instructions
+
+Say **set up my global agent instructions**.
+
+The agent writes one personal instructions file for Claude Code, Codex, Gemini CLI and OpenCode: how to report to you, coding preferences, formatting rules and writing rules. It suggests your name from your Git profile or computer and asks you to confirm it. It lets you adjust the About Me section and any rules, and shows the final text before writing. Existing files are backed up first, and you choose to replace, merge or skip each one.
+
+**Use when:**
+
+- You set up a new computer and want your agents to work your way from day one
+- You changed your preferences and want every agent updated
 
 ## Repository Layout
 

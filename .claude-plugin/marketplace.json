@@ -4,7 +4,7 @@
     "name": "Ekansh Jain"
   },
   "metadata": {
-    "description": "Agent skills for product videos, driving your own browser, and shrinking Git history.",
+    "description": "Agent skills for product videos, driving your own browser, shrinking Git history and setting up global agent instructions.",
     "version": "1.0.0"
   },
   "plugins": [
@@ -33,6 +33,15 @@
       "strict": false,
       "skills": [
         "./skills/git-history-cleanup"
+      ]
+    },
+    {
+      "name": "global-instructions",
+      "description": "Use when the user wants to set up or update their personal global instructions for coding agents (CLAUDE.md, AGENTS.md) on this computer.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/global-instructions"
       ]
     }
   ]
