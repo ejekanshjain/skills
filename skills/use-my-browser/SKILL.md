@@ -17,7 +17,7 @@ The expensive part is not Playwright. It is an LLM turn per action: write a tiny
 
 ## Speed
 
-Pick a mode, then run it. T3 Code's preview browser is fast when the agent uses `preview_evaluate` for a known page, `preview_wait_for` after a change, and `preview_snapshot` only to discover controls. Do the same here.
+Pick a mode, then run it. Use `eval` on a page you know, `wait` after a change, and `inspect` only to discover controls.
 
 **Known page, JS can do it** (native inputs, extract a table, click in-DOM controls): one `eval.mjs`. One expression, mutate + return.
 
@@ -25,7 +25,7 @@ Pick a mode, then run it. T3 Code's preview browser is fast when the agent uses 
 
 **Unknown page**: `inspect.mjs` once. Then eval or batch the rest. Do not pair inspect with a screenshot every time.
 
-Driver scripts (`detect-browsers`, `wait-cdp`, `inspect`, `eval`, `batch`, `run`) print JSON and exit. Only the Chromium launch stays in the background. Do not background a driver, and do not poll it. If the host auto-backgrounds one, the script hung — kill that **node** process, not Chromium, then fix the task.
+Driver scripts (`detect-browsers`, `wait-cdp`, `inspect`, `eval`, `batch`, `run`) print JSON and exit. Only the Chromium launch stays in the background. Do not background a driver, and do not poll it. If the host auto-backgrounds one, the script hung: kill that **node** process, not Chromium, then fix the task.
 
 Stop doing these:
 
@@ -40,9 +40,9 @@ Stop doing these:
 
 Confirm with the cheapest signal that answers the next question: `page.url()`, a locator `innerText()`, `waitForURL`, or one `eval`. If the question is "is X on this page?", extract it in the same script that navigated. Screenshot is evidence for the user, not the wait signal.
 
-Keep fills sequential in that one script so focus does not race. Parallelize independent reads with `Promise.all`. Arm `waitForURL` (or a locator wait) before the click that navigates. Keep order when a step depends on the previous one (click opens a modal, then fill the modal). After a submit, wait for a URL, text, or locator — not a screenshot.
+Keep fills sequential in that one script so focus does not race. Parallelize independent reads with `Promise.all`. Arm `waitForURL` (or a locator wait) before the click that navigates. Keep order when a step depends on the previous one (click opens a modal, then fill the modal). After a submit, wait for a URL, text, or locator, not a screenshot.
 
-Default action timeout is 15s (`UMB_TIMEOUT` to override). That is for things that **must** appear. Optional UI (cookie banners, consent, "got it", newsletter modals) uses `clickIf` or `click({ timeout: 400 }).catch(() => {})` — one short attempt, often in parallel, never a 15s wait. `goto` uses `domcontentloaded` unless you need `load`.
+Default action timeout is 15s (`UMB_TIMEOUT` to override). That is for things that **must** appear. Optional UI (cookie banners, consent, "got it", newsletter modals) uses `clickIf` or `click({ timeout: 400 }).catch(() => {})`: one short attempt, often in parallel, never a 15s wait. `goto` uses `domcontentloaded` unless you need `load`.
 
 In `page.evaluate`, query the container you care about. Walking every node on a large page is slow and times out.
 
@@ -87,7 +87,7 @@ Launch in the background and leave it running:
 
 Quote the executable when the path has spaces, for example `/Applications/Brave Browser.app/Contents/MacOS/Brave Browser`.
 
-Then wait with the skill script — not a shell loop:
+Then wait with the skill script, not a shell loop:
 
 ```bash
 node "$SKILL_DIR/scripts/wait-cdp.mjs"
@@ -139,7 +139,7 @@ JSON array. Each step has `op` plus a target. Prefer Playwright locator strings:
 
 Ops: `goto`, `reload`, `newPage`, `click`, `clickIf`, `fill`, `type`, `press`, `scroll`, `check`, `uncheck`, `hover`, `select`, `wait`, `eval`, `screenshot`.
 
-`goto` skips when the tab is already on that URL (`force: true` to reload). `wait` ANDs every condition you pass (`url`, `urlIncludes`, `text`, `load`, `fn`, locator). `type` can omit a target (types into focus) or set `clear: true`. `scroll` takes `deltaX` / `deltaY`, or `intoView: true` with a locator to bring a target on screen. `select` takes `value` or `values`. Any step may set `timeout` in ms. `clickIf` clicks when the target appears within `timeout` (default 500ms) and continues if it does not — for optional overlays, not for buttons the flow requires. `screenshot` with a locator scrolls that element into view first; `element: true` shots just that node; `fullPage` only when the document is bounded.
+`goto` skips when the tab is already on that URL (`force: true` to reload). `wait` ANDs every condition you pass (`url`, `urlIncludes`, `text`, `load`, `fn`, locator). `type` can omit a target (types into focus) or set `clear: true`. `scroll` takes `deltaX` / `deltaY`, or `intoView: true` with a locator to bring a target on screen. `select` takes `value` or `values`. Any step may set `timeout` in ms. `clickIf` clicks when the target appears within `timeout` (default 500ms) and continues if it does not. Use it for optional overlays, not for buttons the flow requires. `screenshot` with a locator scrolls that element into view first; `element: true` shots just that node; `fullPage` only when the document is bounded.
 
 ### Eval
 
@@ -211,6 +211,6 @@ Prefer locators (`getByRole`, `getByLabel`, `getByText`, `getByPlaceholder`, `ge
 
 Typical Playwright: `goto`, `click`, `fill`, `press`, `hover`, `selectOption`, `innerText`, `evaluate`, `screenshot`, `waitForURL`, `waitForSelector`, `waitForLoadState`.
 
-For a local app, reload after code changes when hot reload is not enough, then re-check with inspect or a cheap eval — not a new navigation.
+For a local app, reload after code changes when hot reload is not enough, then re-check with inspect or a cheap eval, not a new navigation.
 
 If connect fails, re-run detect. If the browser died, launch again. If the user-data dir is locked, ask them to quit the browser first.
