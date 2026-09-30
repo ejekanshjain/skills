@@ -66,14 +66,16 @@ export default {
   cardMs: 1000,
 
   // Signs in once before recording, with a demo account. `page` offers goto,
-  // fill, click, press, eval, send (raw DevTools Protocol) and setCookies.
+  // fill, click, press, eval, waitFor, send (raw DevTools Protocol) and
+  // setCookies.
   // Read credentials from the environment if they are more than demo data.
   async signIn({ page, baseUrl }) {
     await page.goto(`${baseUrl}/login`);
     await page.fill('input[type="email"]', "demo@example.com");
     await page.fill('input[type="password"]', "demo-password");
     await page.press("Enter");
-    await page.goto(`${baseUrl}/dashboard`);
+    // Wait until sign-in finishes: opening another page now would cancel it
+    await page.waitFor(`!location.pathname.startsWith("/login")`);
   },
 
   // Soundtrack, all optional. Paths are relative to this file. Per-segment
@@ -125,7 +127,7 @@ export default {
       //
       // s: move(x, y, ms), click(x?, y?), scroll(dy, ms, containerSelector?),
       //    pause(ms), find(text) -> { x, y }, caption(card | null)
-      // page: goto, eval, send, fill, click, press, mouse
+      // page: goto, eval, waitFor, send, fill, click, press, mouse
       act: async (s, page) => {
         const tile = await s.find("Revenue");
         await s.move(tile.x, tile.y, 900);

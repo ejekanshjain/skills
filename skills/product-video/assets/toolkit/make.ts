@@ -457,11 +457,9 @@ function exportFiles(config: Config, master: string, name: string, audio: string
 
 function exportTour(config: Config, workDir: string) {
   const timeline = buildTimeline(config, workDir);
+  // Relative to the list's folder, so quotes or spaces in the temp path can't break it
   const list = path.join(workDir, "order.txt");
-  writeFileSync(
-    list,
-    timeline.map((t) => `file '${path.join(workDir, "encoded", `${t.key}.mp4`)}'`).join("\n"),
-  );
+  writeFileSync(list, timeline.map((t) => `file 'encoded/${t.key}.mp4'`).join("\n"));
   const master = path.join(workDir, "tour-master.mp4");
   ffmpeg(["-f", "concat", "-safe", "0", "-i", list, "-c", "copy", master]);
   const total = duration(master);

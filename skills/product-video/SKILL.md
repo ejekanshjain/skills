@@ -5,7 +5,7 @@ license: MIT
 compatibility: The toolkit the skill copies into a project needs Node.js 22.18+ or Bun, ffmpeg, and Chrome, Chromium, Brave or Edge. Any other tools are up to the agent and the user.
 metadata:
   author: ejekanshjain
-  version: '2.0.0'
+  version: '1.0.0'
 ---
 
 # Product Video
@@ -77,6 +77,7 @@ Before creating any file, read `package.json`, `tsconfig.json` if present, the l
    ```
 
    Use `bun` or `tsx` in place of `node` if that is how the project runs TypeScript. In a package without `"type": "module"`, add `--disable-warning=MODULE_TYPELESS_PACKAGE_JSON` after `node` to silence a harmless warning.
+
 3. Write `<video folder>/README.md` from `assets/video-readme.md`, filled in with this project's paths, commands, demo login and seed command. Add one line to the project's main README or agent instructions pointing to it.
 4. Keep the fixes the reference code carries. Each odd-looking step, such as dropping the first frame or converting color range, prevents a bug described in [references/pitfalls.md](references/pitfalls.md).
 

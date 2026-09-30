@@ -13,20 +13,27 @@ if (!file || !existsSync(file)) {
   process.exit(1);
 }
 
-const run = (cmd: string, args: string[]) => {
-  const r = spawnSync(cmd, args, { encoding: "utf8" });
+const run = (cmd: string, args: string[], cwd?: string) => {
+  const r = spawnSync(cmd, args, { encoding: "utf8", cwd });
   if (r.error) throw new Error(`${cmd} is not installed.`);
   if (r.status !== 0) throw new Error(`${cmd} failed: ${r.stderr.trim()}`);
   return r.stdout;
 };
 
-const base = path.join(os.tmpdir(), `product-video-check-${path.parse(file).name}`);
+// ffmpeg filters treat \ : and ' in a path as syntax, so the stats file gets a
+// plain name and ffmpeg runs inside the temp folder to write it
+const name = `product-video-check-${path.parse(file).name.replace(/[^\w-]+/g, "-")}`;
+const base = path.join(os.tmpdir(), name);
 const stats = `${base}-yavg.txt`;
-run("ffmpeg", [
-  "-v", "error", "-i", file,
-  "-vf", `signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=${stats.replaceAll(":", "\\:")}`,
-  "-f", "null", "-",
-]);
+run(
+  "ffmpeg",
+  [
+    "-v", "error", "-i", path.resolve(file),
+    "-vf", `signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=${name}-yavg.txt`,
+    "-f", "null", "-",
+  ],
+  os.tmpdir(),
+);
 const luma = [...readFileSync(stats, "utf8").matchAll(/YAVG=([\d.]+)/g)].map((m) => Number(m[1]));
 const duration = Number(
   run("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]),

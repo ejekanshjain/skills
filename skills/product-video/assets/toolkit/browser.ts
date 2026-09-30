@@ -72,7 +72,7 @@ export async function importConfig(file: string) {
 }
 
 type Handler = (params: any) => void;
-type Pending = { resolve: (result: any) => void; reject: (error: Error) => void };
+type Pending = { method: string; resolve: (result: any) => void; reject: (error: Error) => void };
 
 export class Browser {
   #ws: WebSocket;
@@ -80,6 +80,7 @@ export class Browser {
   #seq = 0;
   #pending = new Map<number, Pending>();
   #handlers = new Map<string, Handler[]>();
+  #closed = false;
 
   constructor(proc: ChildProcess, ws: WebSocket) {
     this.#proc = proc;
@@ -95,6 +96,16 @@ export class Browser {
         for (const handler of this.#handlers.get(msg.method) ?? []) handler(msg.params);
       }
     });
+    // A crashed or closed browser fails every waiting command instead of hanging
+    ws.addEventListener("close", () => {
+      this.#closed = true;
+      for (const pending of this.#pending.values()) pending.reject(this.#closedError(pending.method));
+      this.#pending.clear();
+    });
+  }
+
+  #closedError(method: string) {
+    return new Error(`The browser closed before ${method} finished, so recording stopped. Run the command again.`);
   }
 
   /**
@@ -171,10 +182,11 @@ export class Browser {
 
   /** Sends a raw DevTools Protocol command and resolves with its result. */
   send<T = any>(method: string, params: object = {}): Promise<T> {
+    if (this.#closed) return Promise.reject(this.#closedError(method));
     const id = ++this.#seq;
     this.#ws.send(JSON.stringify({ id, method, params }));
     return new Promise((resolve, reject) =>
-      this.#pending.set(id, { resolve, reject }),
+      this.#pending.set(id, { method, resolve, reject }),
     );
   }
 
@@ -222,12 +234,35 @@ export class Browser {
     for (let i = 0; i < 130; i++) {
       const ready = await this.eval<boolean>(
         `document.readyState === "complete" && ${busyCheck}`,
-      ).catch(() => false);
+      ).catch((error) => {
+        if (this.#closed) throw error;
+        return false;
+      });
       if (ready) break;
       await sleep(150);
     }
     await this.eval("document.fonts.ready.then(() => true)").catch(() => {});
     await sleep(settleMs);
+  }
+
+  /**
+   * Polls a JavaScript expression until it is truthy, such as a URL change
+   * after signing in. Fails after `timeoutMs`.
+   */
+  async waitFor(expression: string, timeoutMs = 15_000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      // Evaluation fails while a navigation replaces the page; keep polling
+      const done = await this.eval<boolean>(`Boolean(${expression})`).catch((error) => {
+        if (this.#closed) throw error;
+        return false;
+      });
+      if (done) return;
+      await sleep(100);
+    }
+    throw new Error(
+      `The page never matched ${expression} within ${timeoutMs / 1000}s, so the next step would run too early. Check the step before it.`,
+    );
   }
 
   async mouse(type: "mouseMoved" | "mousePressed" | "mouseReleased", x: number, y: number) {
@@ -274,6 +309,8 @@ export class Browser {
         type,
         key,
         code: key,
+        // Text on keyDown also sends keypress, which submits forms on Enter
+        ...(type === "keyDown" && key === "Enter" ? { text: "\r" } : {}),
         windowsVirtualKeyCode: key === "Enter" ? 13 : key === "Tab" ? 9 : 0,
       });
   }

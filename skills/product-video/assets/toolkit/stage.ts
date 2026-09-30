@@ -99,7 +99,7 @@ export class Stage {
     this.page = page;
     this.options = options;
     page.on("Page.screencastFrame", (frame: Frame) => {
-      page.send("Page.screencastFrameAck", { sessionId: frame.sessionId });
+      page.send("Page.screencastFrameAck", { sessionId: frame.sessionId }).catch(() => {});
       if (!this.#recording) return;
       // The first frame can be the last one painted before the curtain
       // closed, which would flash the app for one frame
@@ -148,8 +148,10 @@ export class Stage {
 
   /**
    * Stops recording and writes an ffmpeg concat list in which each frame
-   * lasts until the next one arrived. Returns the clip length and when the
-   * curtain opened and closed, in seconds from the clip start.
+   * lasts until the next one arrived. The list names frames relative to its
+   * own folder, so quotes or spaces in the temp path can't break it. Returns
+   * the clip length and when the curtain opened and closed, in seconds from
+   * the clip start.
    */
   async stop() {
     await sleep(120);
@@ -163,10 +165,10 @@ export class Stage {
     const lines = frames.flatMap((f, i) => {
       const next = frames[i + 1];
       const duration = next ? Math.max(next.ts - f.ts, 0.001) : 1 / 30;
-      return [`file '${f.file}'`, `duration ${duration.toFixed(4)}`];
+      return [`file '${path.basename(f.file)}'`, `duration ${duration.toFixed(4)}`];
     });
     const last = frames[frames.length - 1];
-    lines.push(`file '${last.file}'`);
+    lines.push(`file '${path.basename(last.file)}'`);
     writeFileSync(path.join(this.#dir, "list.txt"), lines.join("\n"));
     const since = (t?: number) => (t === undefined ? undefined : Math.max(0, t - frames[0].ts));
     return {
