@@ -1,13 +1,20 @@
-// Product video config for the product-video toolkit. Copy it into the
-// project (for example video/tour.config.mjs), keep what you need, delete the
-// rest. Only `baseUrl` and `scenes` are required; everything else has a
-// default. Scenes are plain JavaScript, so anything a browser can do is fair
-// game: type into forms, open menus, inject overlays, trigger animations.
+// Product video config. It sits in the project's video folder, beside the
+// toolkit/ folder it runs with. Keep what you need, delete the rest. Only
+// `baseUrl` and `scenes` are required; everything else has a default. Scenes
+// are plain code, so anything a browser can do works here: type into forms,
+// open menus, inject overlays, trigger animations.
 //
-//   node <skill>/scripts/make.mjs video/tour.config.mjs             record + export
-//   node <skill>/scripts/make.mjs video/tour.config.mjs pricing     re-record one segment
-//   node <skill>/scripts/make.mjs video/tour.config.mjs --export    re-export only
-//   node <skill>/scripts/make.mjs video/tour.config.mjs --loop      the silent loop
+// Record, re-record one scene, re-export, or build the silent loop:
+//
+//   node toolkit/make.ts tour.config.ts
+//   node toolkit/make.ts tour.config.ts pricing
+//   node toolkit/make.ts tour.config.ts --export
+//   node toolkit/make.ts tour.config.ts --loop
+//
+// Import only types from the project here: Node can't resolve path aliases
+// or extensionless imports.
+
+import type { VideoConfig } from "./toolkit/types.ts";
 
 export default {
   // The running app. Record against local or staging, never production data.
@@ -20,8 +27,9 @@ export default {
   pixelRatio: 2,
 
   output: {
-    // Relative to this config file
-    dir: "../public/video",
+    // Relative to this config file: the folder the app serves as static
+    // files, such as public/ in Next.js and Vite
+    dir: "../../public/video",
     name: "product-tour",
     width: 1920,
     height: 1080,
@@ -59,6 +67,7 @@ export default {
 
   // Signs in once before recording, with a demo account. `page` offers goto,
   // fill, click, press, eval, send (raw DevTools Protocol) and setCookies.
+  // Read credentials from the environment if they are more than demo data.
   async signIn({ page, baseUrl }) {
     await page.goto(`${baseUrl}/login`);
     await page.fill('input[type="email"]', "demo@example.com");
@@ -137,4 +146,4 @@ export default {
       // { key: "reports", path: "/reports", act: async (s) => { … } },
     ],
   },
-};
+} satisfies VideoConfig;

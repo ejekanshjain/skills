@@ -2,24 +2,25 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
-import { Browser } from "./browser.mjs";
+import { Browser, importConfig } from "./browser.ts";
 
 // Signs in with a tour config and screenshots app pages at the recording
 // viewport, for planning scenes and checking sample data.
 //
-//   node snap.mjs <config.mjs> /dashboard /reports?tab=2 [--full]
+//   node snap.ts <config> /dashboard /reports?tab=2 [--full]
 
 const args = process.argv.slice(2);
 const full = args.includes("--full");
 const [configArg, ...paths] = args.filter((a) => a !== "--full");
 if (!configArg || !paths.length) {
-  console.error("usage: node snap.mjs <config.mjs> <path> [path...] [--full]");
+  console.error("usage: node snap.ts <config> <path> [path...] [--full]");
   process.exit(1);
 }
 
-const mod = await import(pathToFileURL(path.resolve(configArg)).href);
-const config = mod.default ?? mod;
+const { config } = await importConfig(configArg).catch((error: Error) => {
+  console.error(error.message);
+  process.exit(1);
+});
 const viewport = config.viewport ?? { width: 1440, height: 810 };
 const outDir = path.join(os.tmpdir(), "product-video-snaps");
 mkdirSync(outDir, { recursive: true });
@@ -36,9 +37,9 @@ try {
   for (const p of paths) {
     await page.goto(new URL(p, config.baseUrl).href, { busy: config.busy });
     const height = full
-      ? Math.min(await page.eval("document.documentElement.scrollHeight"), 6000)
+      ? Math.min(await page.eval<number>("document.documentElement.scrollHeight"), 6000)
       : viewport.height;
-    const shot = await page.send("Page.captureScreenshot", {
+    const shot = await page.send<{ data: string }>("Page.captureScreenshot", {
       format: "jpeg",
       quality: 75,
       captureBeyondViewport: full,

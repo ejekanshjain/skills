@@ -8,7 +8,7 @@ Narration turns a tour into an explanation. The toolkit gives you timing to writ
 
 1. Record the video, even with rough scenes.
 2. Open `<name>.script.md` next to the config. Each segment lists its speaking window and a word budget at about 145 words a minute.
-3. Write `narration` for each segment in the config, run `make.mjs --export`, and read the sheet again: it flags lines that run over.
+3. Write `narration` for each segment in the config, run the video script with `--export`, and read the sheet again: it flags lines that run over.
 4. Produce the audio, set each segment's `voiceover` file, and re-record the segments whose timing changed. They hold until their audio ends.
 
 **Voice first** (when the story leads):

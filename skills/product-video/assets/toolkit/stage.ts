@@ -1,13 +1,24 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import { sleep } from "./browser.mjs";
+import { type Browser, sleep } from "./browser.ts";
+import type { Card, Point, Theme, Viewport } from "./types.ts";
 
 // Recording helpers that live inside the page: a fake cursor, a caption
 // badge, a full-screen title card ("curtain") for transitions, and a frame
 // recorder. Nothing here changes the app being filmed.
 
-const stageScript = (theme, hide) => {
+export type StageOptions = {
+  theme: Theme;
+  hide: string[];
+  pace: number;
+  pixelRatio: number;
+  viewport: Viewport;
+};
+
+type Frame = { sessionId: number; data: string; metadata: { timestamp: number } };
+
+const stageScript = (theme: Theme, hide: string[]) => {
   const css = `
     ${hide.length ? `${hide.join(", ")} { display: none !important; }` : ""}
     html { scroll-behavior: auto !important; }
@@ -75,21 +86,19 @@ const stageScript = (theme, hide) => {
 
 /** Scene helpers for one browser tab, plus a frame recorder. */
 export class Stage {
-  #frames = [];
+  page: Browser;
+  options: StageOptions;
+  #frames: Array<{ file: string; ts: number }> = [];
   #dir = "";
   #recording = false;
   #skipFirst = false;
-  #marks = {};
-  #writes = [];
+  #marks: { open?: number; close?: number } = {};
+  #writes: Promise<void>[] = [];
 
-  /**
-   * @param {import("./browser.mjs").Browser} page
-   * @param {{ theme: object, hide: string[], pace: number, pixelRatio: number, viewport: {width: number, height: number} }} options
-   */
-  constructor(page, options) {
+  constructor(page: Browser, options: StageOptions) {
     this.page = page;
     this.options = options;
-    page.on("Page.screencastFrame", (frame) => {
+    page.on("Page.screencastFrame", (frame: Frame) => {
       page.send("Page.screencastFrameAck", { sessionId: frame.sessionId });
       if (!this.#recording) return;
       // The first frame can be the last one painted before the curtain
@@ -108,13 +117,13 @@ export class Stage {
   }
 
   /** Adds the cursor, caption and a closed curtain to the current page. */
-  async inject({ cursor = true } = {}) {
+  async inject({ cursor = true }: { cursor?: boolean } = {}) {
     await this.page.eval(stageScript(this.options.theme, this.options.hide));
     if (!cursor) await this.page.eval(`__pv.cursor.style.display = "none"`);
   }
 
   /** Starts saving painted frames into `dir`. */
-  async record(dir) {
+  async record(dir: string) {
     rmSync(dir, { recursive: true, force: true });
     mkdirSync(dir, { recursive: true });
     this.#dir = dir;
@@ -156,17 +165,18 @@ export class Stage {
       const duration = next ? Math.max(next.ts - f.ts, 0.001) : 1 / 30;
       return [`file '${f.file}'`, `duration ${duration.toFixed(4)}`];
     });
-    lines.push(`file '${frames.at(-1).file}'`);
+    const last = frames[frames.length - 1];
+    lines.push(`file '${last.file}'`);
     writeFileSync(path.join(this.#dir, "list.txt"), lines.join("\n"));
-    const since = (t) => (t === undefined ? undefined : Math.max(0, t - frames[0].ts));
+    const since = (t?: number) => (t === undefined ? undefined : Math.max(0, t - frames[0].ts));
     return {
-      seconds: frames.at(-1).ts - frames[0].ts,
+      seconds: last.ts - frames[0].ts,
       marks: { open: since(this.#marks.open), close: since(this.#marks.close) },
     };
   }
 
   /** Waits, scaled by the configured pace. */
-  pause(ms) {
+  pause(ms: number) {
     return sleep(ms * this.options.pace);
   }
 
@@ -174,7 +184,7 @@ export class Stage {
    * Opens or closes the curtain instantly, optionally showing a card on it.
    * Recording notes the moment so the export can draw a smooth fade there.
    */
-  async curtain(open, card, ms = 0) {
+  async curtain(open: boolean, card?: Card, ms = 0) {
     // Noted before the switch, so no bright frame lands before a fade
     const now = Date.now() / 1000;
     if (this.#recording && open) this.#marks.open = now;
@@ -191,13 +201,13 @@ export class Stage {
   }
 
   /** Fades the card text on the curtain in or out. */
-  async curtainText(show, ms = 600) {
+  async curtainText(show: boolean, ms = 600) {
     await this.page.eval(`__pv.curtain.classList.toggle("text", ${show}), true`);
     await sleep(ms);
   }
 
   /** Shows the caption badge, or hides it when `card` is null. */
-  async caption(card) {
+  async caption(card: Card | null) {
     await this.page.eval(`(() => {
       ${card ? `__pv.fill(__pv.caption, ${JSON.stringify(card)}, true);` : ""}
       __pv.caption.classList.toggle("on", ${!!card});
@@ -206,9 +216,9 @@ export class Stage {
   }
 
   /** Glides the cursor to a point, sending real mouse moves so hover states show. */
-  async move(x, y, ms = 700) {
+  async move(x: number, y: number, ms = 700) {
     ms *= this.options.pace;
-    const from = await this.page.eval("({ x: __pv.x, y: __pv.y })");
+    const from = await this.page.eval<Point>("({ x: __pv.x, y: __pv.y })");
     // The first move of a scene starts just off to the lower right
     const start = from.x < 0 ? { x: x + 180, y: y + 140 } : from;
     const steps = Math.max(8, Math.round(ms / 16));
@@ -229,9 +239,9 @@ export class Stage {
   }
 
   /** Clicks where the cursor is, or moves there first. */
-  async click(x, y) {
+  async click(x?: number, y?: number) {
     if (x !== undefined && y !== undefined) await this.move(x, y);
-    const pos = await this.page.eval("({ x: __pv.x, y: __pv.y })");
+    const pos = await this.page.eval<Point>("({ x: __pv.x, y: __pv.y })");
     await this.page.eval(
       `(() => { const c = __pv.cursor; c.classList.remove("click"); void c.offsetWidth; c.classList.add("click"); return true; })()`,
     );
@@ -244,7 +254,7 @@ export class Stage {
    * Smoothly scrolls by `dy` CSS pixels. Scrolls the page, or the element
    * matching `container` for apps that scroll inside a panel.
    */
-  async scroll(dy, ms = 1400, container) {
+  async scroll(dy: number, ms = 1400, container?: string) {
     ms *= this.options.pace;
     await this.page.eval(`new Promise(done => {
       const el = ${container ? `document.querySelector(${JSON.stringify(container)})` : "document.scrollingElement"};
@@ -264,8 +274,8 @@ export class Stage {
    * Viewport position of the smallest visible element whose text starts with
    * `text`, so scenes point at things without fixed coordinates.
    */
-  async find(text) {
-    const point = await this.page.eval(`(() => {
+  async find(text: string) {
+    const point = await this.page.eval<Point | null>(`(() => {
       const t = ${JSON.stringify(text)};
       const starts = e => (e.textContent || "").trim().startsWith(t);
       const el = [...document.querySelectorAll("body *")].find(e => {

@@ -1,6 +1,6 @@
 # Recording Pitfalls
 
-Each problem below happened while building this method. The scripts handle all of them; this file explains the symptoms in case you change the scripts or debug a new app.
+Each problem below happened while building this method. The toolkit handles all of them; this file explains the symptoms so you keep those fixes when you adapt the toolkit, and can debug a new app.
 
 ## The Video Won't Play in Some Browsers
 
@@ -8,7 +8,7 @@ Each problem below happened while building this method. The scripts handle all o
 
 **Cause:** screencast frames are full-range JPEGs. Encoding them as-is tags the video as full range, and some GPU decoders reject that. The browser doesn't fall back to the next `<source>` once a file has started loading.
 
-**Fix:** convert to limited-range BT.709 while encoding (`out_range=tv`, `out_color_matrix=bt709`) and tag the output. `make.mjs` does this. Verify with `ffprobe -show_entries stream=color_range,color_space`: expect `tv` and `bt709`.
+**Fix:** convert to limited-range BT.709 while encoding (`out_range=tv`, `out_color_matrix=bt709`) and tag the output. `make.ts` does this. Verify with `ffprobe -show_entries stream=color_range,color_space`: expect `tv` and `bt709`.
 
 ## A One-Frame Flash of the App Before a Step
 
@@ -20,21 +20,21 @@ Each problem below happened while building this method. The scripts handle all o
 
 ## Harsh or Stuttering Fades
 
-**Symptom:** the move from the dark card to a bright screen feels like a flicker. `check.mjs` reports jumps of 30 or more brightness levels during a fade.
+**Symptom:** the move from the dark card to a bright screen feels like a flicker. `check.ts` reports jumps of 30 or more brightness levels during a fade.
 
 **Cause:** the browser drops frames when it fades a full-screen overlay at high resolution, so brightness jumps in uneven steps.
 
-**Fix:** switch the card instantly while recording, note the moment, and draw the fade with ffmpeg afterwards at a steady frame rate. `Stage.curtain` records the moments; `make.mjs` draws the fades.
+**Fix:** switch the card instantly while recording, note the moment, and draw the fade with ffmpeg afterwards at a steady frame rate. `Stage.curtain` records the moments; `make.ts` draws the fades.
 
 ## Blurry Text
 
 **Cause:** screencast frames arrive at 1x CSS pixels unless the browser is launched with `--force-device-scale-factor`.
 
-**Fix:** `browser.mjs` passes the pixel ratio at launch and in device emulation. Frames arrive at 2880x1620 for a 1440x810 viewport and are downscaled to 1920x1080.
+**Fix:** `browser.ts` passes the pixel ratio at launch and in device emulation. Frames arrive at 2880x1620 for a 1440x810 viewport and are downscaled to 1920x1080.
 
 ## Choppy Motion
 
-The screencast only sends frames when the page repaints, at irregular times. `stage.mjs` keeps a 1px element repainting every frame and writes an ffmpeg concat list with each frame's real duration, so motion keeps its real timing. Expect 40 to 60 captured frames per second, resampled to 30.
+The screencast only sends frames when the page repaints, at irregular times. `stage.ts` keeps a 1px element repainting every frame and writes an ffmpeg concat list with each frame's real duration, so motion keeps its real timing. Expect 40 to 60 captured frames per second, resampled to 30.
 
 ## Dev Overlays in the Shot
 
@@ -46,8 +46,16 @@ Set `busy` to a selector that matches loading UI. `goto` waits until nothing mat
 
 ## A Broken File While a Page Is Open
 
-Overwriting a video while a browser streams it breaks playback, because the byte ranges no longer match. `make.mjs` writes each output under a temporary name and renames it into place. After re-exporting, hard-refresh any open page.
+Overwriting a video while a browser streams it breaks playback, because the byte ranges no longer match. `make.ts` writes each output under a temporary name and renames it into place. After re-exporting, hard-refresh any open page.
 
 ## Verifying Playback
 
 Headless Chromium decodes in software, so it can pass files a real browser's GPU decoder rejects. After exporting, play the video in the user's real browser (for example with the use-my-browser skill): press play, wait 8 seconds, seek to the middle, and confirm `currentTime` advances with no `video.error`.
+
+## The Toolkit Won't Start
+
+**Symptom:** `make.ts` stops with `Cannot find module`, `Unknown file extension ".ts"` or a syntax error on a type annotation.
+
+**Cause:** Node runs `.ts` files by stripping their types. That needs Node 22.18 or later, and only works on erasable syntax: no enums, namespaces or constructor parameter properties. Node also resolves imports without the bundler's help: no `@/` path aliases, no extensionless paths.
+
+**Fix:** use Node 22.18+ or Bun, or the project's TypeScript runner such as `tsx`. Keep adapted toolkit code to erasable syntax, and keep the config's imports type-only. A `MODULE_TYPELESS_PACKAGE_JSON` warning in projects without `"type": "module"` is harmless; `--disable-warning=MODULE_TYPELESS_PACKAGE_JSON` hides it.

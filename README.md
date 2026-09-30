@@ -57,14 +57,15 @@ The bundled toolkit is optional and easy to extend. It records your real app in 
 - Your UI changed and the existing video is out of date
 - You need a short autoplaying loop for a landing page
 
-**Toolkit requires:** Node.js 22+ or Bun, ffmpeg, and Chrome, Chromium, Brave or Edge. The scripts have no npm dependencies.
+**Toolkit requires:** Node.js 22.18+ or Bun, ffmpeg, and Chrome, Chromium, Brave or Edge. No npm dependencies.
+
+The agent copies the toolkit into your project, in your project's language and folder layout, and adds package scripts and a README. Teammates without the skill can rebuild the video or make new ones from the repository.
 
 **Includes:**
 
-- `scripts/make.mjs`: records segments and exports the video, poster, captions, audio mix and a timed voice-over sheet
-- `scripts/check.mjs`: finds one-frame flashes and harsh fades, writes a contact sheet
-- `scripts/snap.mjs`: screenshots app pages at the recording size, for planning
-- `assets/tour.config.mjs`: the config template, with every option explained
+- `assets/toolkit/`: TypeScript reference code that records segments, exports the video, poster, captions and audio mix, screenshots pages and checks for flashes
+- `assets/tour.config.ts`: the config template, with every option explained
+- `assets/video-readme.md`: the template for your video folder's README
 - `references/`: guides for story and pacing, voice-over, sample data, recording pitfalls and embedding
 
 ## use-my-browser

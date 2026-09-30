@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { stripTypeScriptTypes } from "node:module";
+import os from "node:os";
 import path from "node:path";
 
 // Checks every skill against the Agent Skills spec and this repo's rules:
@@ -92,11 +94,24 @@ for (const dir of skills) {
       fail(where, `link to ${target} points at a missing file`);
   }
 
-  for (const script of filesIn(path.join(skillsDir, dir)).filter((f) => /\.m?js$/.test(f))) {
+  for (const script of filesIn(path.join(skillsDir, dir)).filter((f) => /\.(m?js|ts)$/.test(f))) {
+    const where = path.relative(root, script);
+    let file = script;
+    if (script.endsWith(".ts")) {
+      // `node --check` doesn't strip types, so strip them first. This also
+      // rejects syntax Node can't run unbuilt, such as enums.
+      try {
+        file = path.join(os.tmpdir(), `validate-${path.basename(script, ".ts")}.mjs`);
+        writeFileSync(file, stripTypeScriptTypes(readFileSync(script, "utf8")));
+      } catch (error) {
+        fail(where, error.message);
+        continue;
+      }
+    }
     // Always Node: `bun --check` runs the script instead of only parsing it
-    const check = spawnSync("node", ["--check", script], { encoding: "utf8" });
+    const check = spawnSync("node", ["--check", file], { encoding: "utf8" });
     if (check.status !== 0)
-      fail(path.relative(root, script), check.stderr.trim().split("\n").slice(0, 4).join(" "));
+      fail(where, check.stderr.trim().split("\n").slice(0, 4).join(" "));
   }
 }
 

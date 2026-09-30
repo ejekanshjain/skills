@@ -20,6 +20,7 @@ This repo publishes open-source agent skills in the [Agent Skills](https://agent
 ## Scripts
 
 - Prefer Node.js 22+ `.mjs` with no dependencies. They must also run under Bun.
+- Code that a skill copies into the user's project lives in `assets/`, not `scripts/`. product-video's toolkit is TypeScript with erasable syntax only and `.ts` import paths, so Node 22.18+ and Bun run it unbuilt.
 - When a dependency is unavoidable, declare it in the skill's `package.json` and tell the agent to install it into `SKILL_DIR`, with the user's approval.
 - Scripts print results and exit. Errors name what failed and what to do next.
 - Support Linux, macOS and Windows paths when you look for executables.
@@ -27,8 +28,8 @@ This repo publishes open-source agent skills in the [Agent Skills](https://agent
 
 ## Before You Commit
 
-1. Run `node scripts/validate.mjs`: it checks frontmatter, names, links and script syntax.
-2. Exercise changed scripts against a real target. For product-video, record a short tour and run `scripts/check.mjs` on it.
+1. Run `node scripts/validate.mjs`: it checks frontmatter, names, links and script syntax, including `.ts` files.
+2. Exercise changed scripts against a real target. For product-video, copy `assets/toolkit` and a config into a scratch project, record a short tour, and run `check.ts` on it.
 3. Update the skill's `metadata.version` and the table in `README.md` when behavior changes.
 
 ## Writing

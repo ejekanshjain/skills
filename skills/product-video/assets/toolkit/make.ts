@@ -11,15 +11,15 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
-import { Browser, sleep } from "./browser.mjs";
-import { Stage } from "./stage.mjs";
+import { Browser, importConfig, sleep } from "./browser.ts";
+import { Stage } from "./stage.ts";
+import type { Audio, Bookend, Loop, Output, Scene, Theme, VideoConfig, Viewport } from "./types.ts";
 
 const USAGE = `Record a product video from a running web app.
 
-  node make.mjs <config.mjs> [segment keys...] [--export] [--loop]
+  node make.ts <config> [segment keys...] [--export] [--loop]
 
-  <config.mjs>    video config (start from assets/tour.config.mjs)
+  <config>        video config, such as tour.config.ts
   segment keys    re-record only these (intro, outro or scene keys), reuse the rest
   --export        skip recording; rebuild the timeline, script, captions, audio
                   mix and video files from the clips already recorded
@@ -30,7 +30,43 @@ Besides the video, every export writes next to the config:
   <name>.script.md       voice-over sheet: time windows, word budgets, narration
 Recorded clips stay in the system temp folder between runs.`;
 
-const DEFAULTS = {
+/** A config with every default filled in. */
+type Config = Omit<VideoConfig, "output" | "theme" | "audio"> & {
+  viewport: Viewport;
+  pixelRatio: number;
+  output: Output;
+  theme: Theme;
+  audio: Audio;
+  hide: string[];
+  busy: string;
+  pace: number;
+  fadeMs: number;
+  cardMs: number;
+  /** The config's folder: relative paths in the config start here. */
+  dir: string;
+};
+
+type Segment =
+  | (Bookend & { key: "intro" | "outro"; kind: "card" })
+  | (Scene & { kind: "scene" });
+
+type Marks = { open?: number; close?: number };
+
+/** One segment's place in the finished video, in seconds. */
+type Entry = {
+  key: string;
+  title: string;
+  start: number;
+  screenStart: number;
+  screenEnd: number;
+  end: number;
+  speakFrom: number;
+  budgetWords: number;
+  narration: string;
+  voiceover?: string;
+};
+
+const DEFAULTS: Omit<Config, "baseUrl" | "scenes" | "dir"> = {
   viewport: { width: 1440, height: 810 },
   pixelRatio: 2,
   output: {
@@ -65,10 +101,10 @@ const WORDS_PER_SECOND = 2.4;
 // Screencast frames are full-range JPEGs; convert them to the limited-range
 // BT.709 color every web video uses, or some GPU decoders reject the file.
 const COLOR_TAGS = "-colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv".split(" ");
-const clipFilter = (o) =>
+const clipFilter = (o: Output) =>
   `fps=30,scale=${o.width}:${o.height}:flags=lanczos:in_range=pc:out_range=tv:in_color_matrix=bt601:out_color_matrix=bt709,format=yuv420p`;
 const CLIP_FLAGS = ["-c:v", "libx264", "-crf", "10", "-preset", "fast", ...COLOR_TAGS];
-const FORMATS = {
+const FORMATS: Record<string, { video: string; audio: string }> = {
   mp4: {
     video: "-c:v libx264 -profile:v high -crf 23 -preset veryslow -tune stillimage -pix_fmt yuv420p -movflags +faststart",
     audio: "-c:a aac -b:a 160k",
@@ -79,21 +115,27 @@ const FORMATS = {
   },
 };
 
-function run(cmd, args) {
+function run(cmd: string, args: string[]) {
   const r = spawnSync(cmd, args, { encoding: "utf8" });
   if (r.error) throw new Error(`${cmd} is not installed, so the video cannot be built.`);
   if (r.status !== 0) throw new Error(`${cmd} failed: ${r.stderr.trim()}`);
   return r.stdout;
 }
-const ffmpeg = (args) => run("ffmpeg", ["-v", "error", "-y", ...args]);
-const duration = (file) =>
+const ffmpeg = (args: string[]) => run("ffmpeg", ["-v", "error", "-y", ...args]);
+const duration = (file: string) =>
   Number(run("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]));
 
 /** Merges user config over defaults, one level deep for nested groups. */
-function resolveConfig(user, configPath) {
-  const config = { ...DEFAULTS, ...user };
-  for (const key of ["viewport", "output", "theme", "audio"])
-    config[key] = { ...DEFAULTS[key], ...user[key] };
+function resolveConfig(user: VideoConfig, configPath: string): Config {
+  const config: Config = {
+    ...DEFAULTS,
+    ...user,
+    viewport: { ...DEFAULTS.viewport, ...user.viewport },
+    output: { ...DEFAULTS.output, ...user.output },
+    theme: { ...DEFAULTS.theme, ...user.theme },
+    audio: { ...DEFAULTS.audio, ...user.audio },
+    dir: path.dirname(configPath),
+  };
   if (!config.baseUrl) throw new Error("The config needs a baseUrl, such as http://localhost:3000.");
   if (!config.scenes?.length && !config.loop)
     throw new Error("The config needs at least one scene.");
@@ -104,25 +146,24 @@ function resolveConfig(user, configPath) {
     if (keys.has(scene.key)) throw new Error(`The scene key "${scene.key}" is taken.`);
     keys.add(scene.key);
   }
-  config.dir = path.dirname(configPath);
   config.output.dir = path.resolve(config.dir, config.output.dir);
   return config;
 }
 
-const url = (config, pathname = "/") => new URL(pathname, config.baseUrl).href;
-const fromConfig = (config, file) => (file ? path.resolve(config.dir, file) : undefined);
+const url = (config: Config, pathname = "/") => new URL(pathname, config.baseUrl).href;
+const fromConfig = (config: Config, file?: string) => (file ? path.resolve(config.dir, file) : undefined);
 
 /** The intro, scenes and outro in order, as segments with a shared shape. */
-function segments(config) {
+function segments(config: Config): Segment[] {
   return [
-    ...(config.intro ? [{ key: "intro", kind: "card", ...config.intro }] : []),
-    ...config.scenes.map((s) => ({ kind: "scene", ...s })),
-    ...(config.outro ? [{ key: "outro", kind: "card", ...config.outro }] : []),
+    ...(config.intro ? [{ ...config.intro, key: "intro", kind: "card" } as const] : []),
+    ...config.scenes.map((s) => ({ ...s, kind: "scene" }) as const),
+    ...(config.outro ? [{ ...config.outro, key: "outro", kind: "card" } as const] : []),
   ];
 }
 
 /** Seconds a segment must stay up so its voice-over finishes, if it has one. */
-function holdSeconds(config, segment) {
+function holdSeconds(config: Config, segment: Segment) {
   const audio = fromConfig(config, segment.voiceover);
   if (audio && !existsSync(audio)) throw new Error(`Voice-over file ${audio} does not exist.`);
   return Math.max(segment.minSeconds ?? 0, audio ? duration(audio) + 0.6 : 0);
@@ -132,7 +173,13 @@ function holdSeconds(config, segment) {
  * Normalizes a recorded clip to the output size and draws its fades: in
  * where the curtain opened, out so the screen is dark where it closed.
  */
-function encodeClip(config, dir, marks, file, limitSeconds) {
+function encodeClip(
+  config: Config,
+  dir: string,
+  marks: Marks | null,
+  file: string,
+  limitSeconds?: number,
+) {
   const base = clipFilter(config.output);
   const color = `0x${config.theme.background.replace("#", "")}`;
   const d = config.fadeMs / 1000;
@@ -158,7 +205,7 @@ function encodeClip(config, dir, marks, file, limitSeconds) {
   ]);
 }
 
-async function openStage(config, workDir) {
+async function openStage(config: Config, workDir: string) {
   const page = await Browser.launch({
     viewport: config.viewport,
     pixelRatio: config.pixelRatio,
@@ -176,9 +223,9 @@ async function openStage(config, workDir) {
   return { page, stage };
 }
 
-async function recordTour(config, keys, workDir) {
+async function recordTour(config: Config, keys: string[], workDir: string) {
   const { page, stage } = await openStage(config, workDir);
-  const goto = async (pathname) => {
+  const goto = async (pathname?: string) => {
     await page.goto(url(config, pathname), { busy: config.busy });
     if (config.prepare) await config.prepare(page);
   };
@@ -236,35 +283,39 @@ async function recordTour(config, keys, workDir) {
   }
 }
 
-const words = (text) => (text ?? "").trim().split(/\s+/).filter(Boolean).length;
+const words = (text?: string) => (text ?? "").trim().split(/\s+/).filter(Boolean).length;
 
 /** When every segment starts and ends in the finished video. */
-function buildTimeline(config, workDir) {
+function buildTimeline(config: Config, workDir: string): Entry[] {
   let at = 0;
   return segments(config).map((segment) => {
     const metaFile = path.join(workDir, "encoded", `${segment.key}.json`);
     if (!existsSync(metaFile))
       throw new Error(`No recording for ${segment.key}. Run without --export and keys to record everything.`);
     const meta = JSON.parse(readFileSync(metaFile, "utf8"));
-    const entry = {
+    const card = segment.kind === "card";
+    const screenStart = at + (card ? 0 : meta.screenStart);
+    const screenEnd = at + (card ? meta.seconds : meta.screenEnd);
+    // Narration starts once the screen shows, or with the card on cards
+    const speakFrom = card ? at + 0.4 : screenStart + 0.3;
+    const entry: Entry = {
       key: segment.key,
-      title: segment.card?.title ?? segment.title ?? "",
+      title: (card ? segment.title : segment.card?.title) ?? "",
       start: at,
-      screenStart: at + (segment.kind === "card" ? 0 : meta.screenStart),
-      screenEnd: at + (segment.kind === "card" ? meta.seconds : meta.screenEnd),
+      screenStart,
+      screenEnd,
       end: at + meta.seconds,
+      speakFrom,
+      budgetWords: Math.floor((screenEnd - speakFrom) * WORDS_PER_SECOND),
       narration: segment.narration ?? "",
       voiceover: fromConfig(config, segment.voiceover),
     };
-    // Narration starts once the screen shows, or with the card on cards
-    entry.speakFrom = segment.kind === "card" ? entry.start + 0.4 : entry.screenStart + 0.3;
-    entry.budgetWords = Math.floor((entry.screenEnd - entry.speakFrom) * WORDS_PER_SECOND);
     at = entry.end;
     return entry;
   });
 }
 
-const clock = (s) => {
+const clock = (s: number) => {
   const ms = Math.round(s * 1000);
   const h = String(Math.floor(ms / 3_600_000)).padStart(2, "0");
   const m = String(Math.floor(ms / 60_000) % 60).padStart(2, "0");
@@ -273,7 +324,7 @@ const clock = (s) => {
 };
 
 /** A voice-over sheet: each segment's window, word budget and narration. */
-function writeScript(config, timeline, total) {
+function writeScript(config: Config, timeline: Entry[], total: number) {
   const rows = timeline.map((t) => {
     const used = words(t.narration);
     const status = !t.narration
@@ -301,7 +352,7 @@ function writeScript(config, timeline, total) {
       `# Voice-Over Script: ${config.output.name}`,
       "",
       `Total length ${clock(total)}. Budgets assume about ${Math.round(WORDS_PER_SECOND * 60)} words a minute.`,
-      "Generated by make.mjs: edit narration in the config, not here.",
+      "Generated by make.ts: edit narration in the config, not here.",
       "",
       ...rows,
     ].join("\n"),
@@ -311,13 +362,13 @@ function writeScript(config, timeline, total) {
 }
 
 /** WebVTT captions for the narration, one cue per sentence. */
-function writeCaptions(config, timeline) {
-  const cues = [];
+function writeCaptions(config: Config, timeline: Entry[]) {
+  const cues: string[] = [];
   for (const t of timeline.filter((x) => x.narration)) {
     const length = t.voiceover
       ? duration(t.voiceover)
       : Math.min(words(t.narration) / WORDS_PER_SECOND, t.end - t.speakFrom);
-    const sentences = t.narration.match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g).map((s) => s.trim());
+    const sentences = (t.narration.match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g) ?? [t.narration]).map((s) => s.trim());
     const chars = sentences.reduce((sum, s) => sum + s.length, 0);
     let from = t.speakFrom;
     for (const sentence of sentences) {
@@ -338,17 +389,17 @@ function writeCaptions(config, timeline) {
  * optional single voice-over file, and optional looped background music.
  * Returns null when the video has no audio.
  */
-function mixAudio(config, timeline, total, workDir) {
-  const voices = timeline.filter((t) => t.voiceover).map((t) => ({ file: t.voiceover, at: t.speakFrom }));
+function mixAudio(config: Config, timeline: Entry[], total: number, workDir: string) {
+  const voices = timeline.flatMap((t) => (t.voiceover ? [{ file: t.voiceover, at: t.speakFrom }] : []));
   const single = fromConfig(config, config.audio.voiceover);
   if (single) voices.push({ file: single, at: config.audio.voiceoverAt ?? 0 });
   const music = fromConfig(config, config.audio.music);
   if (!voices.length && !music) return null;
-  for (const f of [...voices.map((v) => v.file), music].filter(Boolean))
+  for (const f of [...voices.map((v) => v.file), ...(music ? [music] : [])])
     if (!existsSync(f)) throw new Error(`Audio file ${f} does not exist.`);
 
   const inputs = ["-f", "lavfi", "-t", total.toFixed(3), "-i", "anullsrc=r=48000:cl=stereo"];
-  const chains = [];
+  const chains: string[] = [];
   const labels = ["[0]"];
   voices.forEach((v, i) => {
     inputs.push("-i", v.file);
@@ -375,14 +426,14 @@ function mixAudio(config, timeline, total, workDir) {
  * Writes one output under a temporary name, then swaps it in, so a page that
  * is open during an export never loads a half-written video.
  */
-function writeOutput(file, args) {
+function writeOutput(file: string, args: string[]) {
   const partial = path.join(path.dirname(file), `.partial-${path.basename(file)}`);
   ffmpeg([...args, partial]);
   renameSync(partial, file);
   console.log(`${file}  ${(statSync(file).size / 1e6).toFixed(1)} MB`);
 }
 
-function exportFiles(config, master, name, audio) {
+function exportFiles(config: Config, master: string, name: string, audio: string | null) {
   mkdirSync(config.output.dir, { recursive: true });
   const base = path.join(config.output.dir, name);
   for (const format of config.output.formats) {
@@ -395,14 +446,16 @@ function exportFiles(config, master, name, audio) {
       ...COLOR_TAGS,
     ]);
   }
+  // Short loops can end before the poster time
+  const posterAt = Math.min(config.output.posterAt, duration(master) / 2);
   writeOutput(`${base}-poster.jpg`, [
-    ...["-ss", String(config.output.posterAt), "-i", master],
+    ...["-ss", posterAt.toFixed(3), "-i", master],
     ...["-frames:v", "1", "-q:v", "3"],
   ]);
   return `${base}.${config.output.formats[0]}`;
 }
 
-function exportTour(config, workDir) {
+function exportTour(config: Config, workDir: string) {
   const timeline = buildTimeline(config, workDir);
   const list = path.join(workDir, "order.txt");
   writeFileSync(
@@ -421,11 +474,11 @@ function exportTour(config, workDir) {
   return file;
 }
 
-async function recordLoop(config, keys, workDir) {
+async function recordLoop(config: Config, loop: Loop, keys: string[], workDir: string) {
   const { page, stage } = await openStage(config, workDir);
-  const seconds = config.loop.seconds ?? 6;
+  const seconds = loop.seconds ?? 6;
   try {
-    for (const clip of config.loop.clips.filter((c) => !keys.length || keys.includes(c.key))) {
+    for (const clip of loop.clips.filter((c) => !keys.length || keys.includes(c.key))) {
       const dir = path.join(workDir, "loop", clip.key);
       await page.goto(url(config, clip.path), { busy: config.busy });
       if (config.prepare) await config.prepare(page);
@@ -451,15 +504,15 @@ async function recordLoop(config, keys, workDir) {
  * Crossfades the loop clips in order, then back into the first one, and
  * trims so the last frame leads straight into the first.
  */
-function exportLoop(config, workDir) {
-  const seconds = config.loop.seconds ?? 6;
-  const fade = config.loop.crossfade ?? 0.8;
-  const clips = config.loop.clips.map((c) => path.join(workDir, "loop", `${c.key}.mp4`));
-  const missing = config.loop.clips.filter((_, i) => !existsSync(clips[i]));
+function exportLoop(config: Config, loop: Loop, workDir: string) {
+  const seconds = loop.seconds ?? 6;
+  const fade = loop.crossfade ?? 0.8;
+  const clips = loop.clips.map((c) => path.join(workDir, "loop", `${c.key}.mp4`));
+  const missing = loop.clips.filter((_, i) => !existsSync(clips[i]));
   if (missing.length)
     throw new Error(`No loop recording for ${missing.map((c) => c.key).join(", ")}. Run with --loop and no keys.`);
   const inputs = [...clips, clips[0]];
-  const steps = [];
+  const steps: string[] = [];
   let label = "0";
   for (let i = 1; i < inputs.length; i++) {
     const offset = (seconds - fade) * i;
@@ -475,7 +528,7 @@ function exportLoop(config, workDir) {
     ...CLIP_FLAGS,
     master,
   ]);
-  return exportFiles(config, master, config.loop.name ?? `${config.output.name}-loop`, null);
+  return exportFiles(config, master, loop.name ?? `${config.output.name}-loop`, null);
 }
 
 async function main() {
@@ -487,10 +540,8 @@ async function main() {
   const loop = args.includes("--loop");
   const exportOnly = args.includes("--export");
   const [configArg, ...keys] = args.filter((a) => !a.startsWith("--"));
-  const configPath = path.resolve(configArg);
-  if (!existsSync(configPath)) throw new Error(`No config file at ${configPath}.`);
-  const mod = await import(pathToFileURL(configPath).href);
-  const config = resolveConfig(mod.default ?? mod, configPath);
+  const { configPath, config: user } = await importConfig(configArg);
+  const config = resolveConfig(user, configPath);
 
   const hash = createHash("sha1").update(configPath).digest("hex").slice(0, 8);
   const workDir = path.join(os.tmpdir(), "product-video", `${path.basename(config.dir)}-${hash}`);
@@ -503,9 +554,9 @@ async function main() {
 
   if (loop) {
     if (!config.loop?.clips?.length) throw new Error("The config has no loop.clips to record.");
-    if (!exportOnly) await recordLoop(config, keys, workDir);
-    const file = exportLoop(config, workDir);
-    console.log(`Check it: node ${path.join(import.meta.dirname, "check.mjs")} ${file}`);
+    if (!exportOnly) await recordLoop(config, config.loop, keys, workDir);
+    const file = exportLoop(config, config.loop, workDir);
+    console.log(`Check it: node ${path.join(import.meta.dirname, "check.ts")} ${file}`);
     return;
   }
 
@@ -514,12 +565,12 @@ async function main() {
   if (unknown.length) throw new Error(`Unknown segments: ${unknown.join(", ")}. Use: ${order.join(", ")}.`);
   if (!exportOnly) await recordTour(config, keys.length ? keys : order, workDir);
   const file = exportTour(config, workDir);
-  console.log(`Check it: node ${path.join(import.meta.dirname, "check.mjs")} ${file}`);
+  console.log(`Check it: node ${path.join(import.meta.dirname, "check.ts")} ${file}`);
 }
 
 main().then(
   () => process.exit(0),
-  (error) => {
+  (error: unknown) => {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);
   },

@@ -2,7 +2,7 @@
 
 ## Files
 
-`make.mjs` writes these to `output.dir`:
+The toolkit's `make.ts` writes these to `output.dir`:
 
 - `<name>.webm`: VP9, about 35% smaller. Modern browsers pick it first.
 - `<name>.mp4`: H.264, plays everywhere, including Safari.

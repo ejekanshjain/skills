@@ -9,11 +9,11 @@ import path from "node:path";
 
 const file = process.argv[2];
 if (!file || !existsSync(file)) {
-  console.error("usage: node check.mjs <video>");
+  console.error("usage: node check.ts <video>");
   process.exit(1);
 }
 
-const run = (cmd, args) => {
+const run = (cmd: string, args: string[]) => {
   const r = spawnSync(cmd, args, { encoding: "utf8" });
   if (r.error) throw new Error(`${cmd} is not installed.`);
   if (r.status !== 0) throw new Error(`${cmd} failed: ${r.stderr.trim()}`);
@@ -32,11 +32,11 @@ const duration = Number(
   run("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]),
 );
 const fps = luma.length / duration;
-const at = (i) => `${(i / fps).toFixed(2)}s`;
+const at = (i: number) => `${(i / fps).toFixed(2)}s`;
 
 // A flash: one frame far brighter or darker than both neighbors
 const FLASH = 25;
-const flashes = [];
+const flashes: string[] = [];
 for (let i = 1; i < luma.length - 1; i++) {
   const up = luma[i] - luma[i - 1] > FLASH && luma[i] - luma[i + 1] > FLASH;
   const down = luma[i - 1] - luma[i] > FLASH && luma[i + 1] - luma[i] > FLASH;
@@ -49,10 +49,12 @@ const steps = luma
 const harsh = steps.filter((s) => s.change > FLASH);
 
 const sheet = `${base}-sheet.jpg`;
-const every = Math.max(1, duration / 25);
+// Up to 25 frames, at most one a second, in a grid sized to fit them
+const count = Math.min(25, Math.max(1, Math.floor(duration)));
+const cols = Math.min(5, count);
 run("ffmpeg", [
   "-v", "error", "-y", "-i", file,
-  "-vf", `fps=1/${every.toFixed(3)},scale=480:-1,tile=5x5:padding=4`,
+  "-vf", `fps=${count}/${duration.toFixed(3)},scale=480:-1,tile=${cols}x${Math.ceil(count / cols)}:padding=4`,
   "-frames:v", "1", sheet,
 ]);
 

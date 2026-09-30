@@ -41,7 +41,9 @@ Date everything relative to the day you seed. Tell the user to reseed right befo
 
 ## Write the Seed as a Script
 
-- Put it in the project, for example `scripts/seed-demo`, with a package script such as `db:seed:demo`.
+- Write it in the project's language, beside its existing seed or database scripts. A TypeScript app with a seed in `src/db/seed.ts` gets `src/db/seed-demo.ts`, not a new `.mjs` file in a new folder.
+- Run it the way the project runs its other scripts (its package manager, `tsx`, Bun), with a package script such as `db:seed:demo`.
+- Import the app's own database client, schema and helpers rather than duplicating them.
 - Wipe and rebuild in one run so it is repeatable, and keep it under a minute.
 - Print a short summary at the end: counts and the demo login.
 - Document the command and the demo login in the project's README or agent instructions.

@@ -1,13 +1,15 @@
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
+import type { Point, VideoConfig, Viewport } from "./types.ts";
 
 // A minimal Chrome DevTools Protocol driver for a headless Chromium browser.
-// No dependencies: it needs Node 22+ (global fetch and WebSocket) or Bun.
+// No dependencies: it needs Node 22.18+ (type stripping, fetch, WebSocket) or Bun.
 
-export const sleep = (ms) =>
-  new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+export const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, Math.max(0, ms)));
 
 const LINUX = [
   "chromium",
@@ -31,14 +33,14 @@ const WINDOWS = [
   ["Microsoft", "Edge", "Application", "msedge.exe"],
 ];
 
-const onPath = (command) =>
+const onPath = (command: string) =>
   (process.env.PATH ?? "")
     .split(path.delimiter)
     .map((dir) => path.join(dir, command))
     .find((file) => existsSync(file));
 
 /** Path to a Chromium-based browser: CHROMIUM_PATH, then common installs. */
-export function findChromium() {
+export function findChromium(): string | undefined {
   if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
   if (process.platform === "darwin") return MAC.find((file) => existsSync(file));
   if (process.platform === "win32") {
@@ -46,7 +48,7 @@ export function findChromium() {
       process.env.PROGRAMFILES,
       process.env["PROGRAMFILES(X86)"],
       process.env.LOCALAPPDATA,
-    ].filter(Boolean);
+    ].filter((root): root is string => Boolean(root));
     for (const parts of WINDOWS)
       for (const root of roots) {
         const file = path.join(root, ...parts);
@@ -61,25 +63,61 @@ export function findChromium() {
   return undefined;
 }
 
+/** Loads a video config and returns its default export. */
+export async function importConfig(file: string) {
+  const configPath = path.resolve(file);
+  if (!existsSync(configPath)) throw new Error(`No config file at ${configPath}.`);
+  const mod = await import(pathToFileURL(configPath).href);
+  return { configPath, config: (mod.default ?? mod) as VideoConfig };
+}
+
+type Handler = (params: any) => void;
+type Pending = { resolve: (result: any) => void; reject: (error: Error) => void };
+
 export class Browser {
-  #ws;
+  #ws: WebSocket;
+  #proc: ChildProcess;
   #seq = 0;
-  #pending = new Map();
-  #handlers = new Map();
-  #proc;
+  #pending = new Map<number, Pending>();
+  #handlers = new Map<string, Handler[]>();
+
+  constructor(proc: ChildProcess, ws: WebSocket) {
+    this.#proc = proc;
+    this.#ws = ws;
+    ws.addEventListener("message", (event) => {
+      const msg = JSON.parse(String(event.data));
+      if (msg.id) {
+        const pending = this.#pending.get(msg.id);
+        this.#pending.delete(msg.id);
+        if (msg.error) pending?.reject(new Error(msg.error.message));
+        else pending?.resolve(msg.result);
+      } else if (msg.method) {
+        for (const handler of this.#handlers.get(msg.method) ?? []) handler(msg.params);
+      }
+    });
+  }
 
   /**
    * Starts a headless browser that lays pages out at `viewport` CSS pixels
    * and renders them at `pixelRatio`, then attaches to its tab.
    */
-  static async launch({ viewport, pixelRatio, profileDir, port = 9333 }) {
+  static async launch({
+    viewport,
+    pixelRatio,
+    profileDir,
+    port = 9333,
+  }: {
+    viewport: Viewport;
+    pixelRatio: number;
+    profileDir?: string;
+    port?: number;
+  }) {
     const executable = findChromium();
     if (!executable)
       throw new Error(
         "No Chrome, Chromium, Brave or Edge found. Install one or set CHROMIUM_PATH.",
       );
-    const browser = new Browser();
-    browser.#proc = spawn(
+    const proc = spawn(
       executable,
       [
         "--headless=new",
@@ -97,12 +135,11 @@ export class Browser {
       { stdio: "ignore" },
     );
 
-    let url;
+    let url: string | undefined;
     for (let i = 0; i < 100 && !url; i++) {
       try {
-        const targets = await (
-          await fetch(`http://127.0.0.1:${port}/json/list`)
-        ).json();
+        const response = await fetch(`http://127.0.0.1:${port}/json/list`);
+        const targets = (await response.json()) as Array<{ type: string; webSocketDebuggerUrl: string }>;
         url = targets.find((t) => t.type === "page")?.webSocketDebuggerUrl;
       } catch {
         // The browser is still starting
@@ -110,29 +147,18 @@ export class Browser {
       if (!url) await sleep(100);
     }
     if (!url) {
-      browser.#proc.kill();
+      proc.kill();
       throw new Error(
         `The browser did not open its debugging port ${port}. Close other browsers using that port or pass another.`,
       );
     }
 
-    browser.#ws = new WebSocket(url);
+    const ws = new WebSocket(url);
     await new Promise((resolve, reject) => {
-      browser.#ws.addEventListener("open", resolve, { once: true });
-      browser.#ws.addEventListener("error", reject, { once: true });
+      ws.addEventListener("open", resolve, { once: true });
+      ws.addEventListener("error", reject, { once: true });
     });
-    browser.#ws.addEventListener("message", (event) => {
-      const msg = JSON.parse(String(event.data));
-      if (msg.id) {
-        const pending = browser.#pending.get(msg.id);
-        browser.#pending.delete(msg.id);
-        if (msg.error) pending?.reject(new Error(msg.error.message));
-        else pending?.resolve(msg.result);
-      } else if (msg.method) {
-        for (const handler of browser.#handlers.get(msg.method) ?? [])
-          handler(msg.params);
-      }
-    });
+    const browser = new Browser(proc, ws);
     await browser.send("Page.enable");
     await browser.send("Runtime.enable");
     await browser.send("Emulation.setDeviceMetricsOverride", {
@@ -143,7 +169,8 @@ export class Browser {
     return browser;
   }
 
-  send(method, params = {}) {
+  /** Sends a raw DevTools Protocol command and resolves with its result. */
+  send<T = any>(method: string, params: object = {}): Promise<T> {
     const id = ++this.#seq;
     this.#ws.send(JSON.stringify({ id, method, params }));
     return new Promise((resolve, reject) =>
@@ -151,23 +178,23 @@ export class Browser {
     );
   }
 
-  on(event, handler) {
+  on(event: string, handler: Handler) {
     this.#handlers.set(event, [...(this.#handlers.get(event) ?? []), handler]);
   }
 
-  off(event) {
+  off(event: string) {
     this.#handlers.delete(event);
   }
 
   /** Emulates `prefers-color-scheme` for sites that follow the system theme. */
-  async colorScheme(value) {
+  async colorScheme(value: "light" | "dark") {
     await this.send("Emulation.setEmulatedMedia", {
       features: [{ name: "prefers-color-scheme", value }],
     });
   }
 
   /** Runs a JavaScript expression in the page and returns its value. */
-  async eval(expression) {
+  async eval<T = any>(expression: string): Promise<T> {
     const r = await this.send("Runtime.evaluate", {
       expression,
       awaitPromise: true,
@@ -184,7 +211,7 @@ export class Browser {
    * Opens a URL and waits until it loaded, no element matches `busy`
    * (spinners, skeletons) and fonts are ready.
    */
-  async goto(url, { busy, settleMs = 900 } = {}) {
+  async goto(url: string, { busy, settleMs = 900 }: { busy?: string; settleMs?: number } = {}) {
     const loaded = new Promise((resolve) =>
       this.on("Page.loadEventFired", resolve),
     );
@@ -193,7 +220,7 @@ export class Browser {
     this.off("Page.loadEventFired");
     const busyCheck = busy ? `!document.querySelector(${JSON.stringify(busy)})` : "true";
     for (let i = 0; i < 130; i++) {
-      const ready = await this.eval(
+      const ready = await this.eval<boolean>(
         `document.readyState === "complete" && ${busyCheck}`,
       ).catch(() => false);
       if (ready) break;
@@ -203,7 +230,7 @@ export class Browser {
     await sleep(settleMs);
   }
 
-  async mouse(type, x, y) {
+  async mouse(type: "mouseMoved" | "mousePressed" | "mouseReleased", x: number, y: number) {
     await this.send("Input.dispatchMouseEvent", {
       type,
       x,
@@ -214,8 +241,8 @@ export class Browser {
   }
 
   /** Clicks the first element matching a CSS selector, without the fake cursor. */
-  async click(selector) {
-    const point = await this.eval(`(() => {
+  async click(selector: string) {
+    const point = await this.eval<Point | null>(`(() => {
       const el = document.querySelector(${JSON.stringify(selector)});
       if (!el) return null;
       el.scrollIntoView({ block: "center" });
@@ -228,8 +255,8 @@ export class Browser {
   }
 
   /** Focuses a field and types text into it, as a person would. */
-  async fill(selector, text) {
-    const found = await this.eval(`(() => {
+  async fill(selector: string, text: string) {
+    const found = await this.eval<boolean>(`(() => {
       const el = document.querySelector(${JSON.stringify(selector)});
       if (!el) return false;
       el.focus();
@@ -241,7 +268,7 @@ export class Browser {
   }
 
   /** Presses one key, such as Enter or Tab, in the focused element. */
-  async press(key) {
+  async press(key: string) {
     for (const type of ["keyDown", "keyUp"])
       await this.send("Input.dispatchKeyEvent", {
         type,
@@ -252,7 +279,7 @@ export class Browser {
   }
 
   /** Sets cookies, for example a session cookie your app issued. */
-  async setCookies(cookies) {
+  async setCookies(cookies: Array<{ name: string; value: string; url?: string; domain?: string; path?: string }>) {
     await this.send("Network.setCookies", { cookies });
   }
 
