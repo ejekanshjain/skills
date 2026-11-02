@@ -2,10 +2,10 @@
 name: product-video
 description: Use when the user wants a demo or promo video of their app, a product walkthrough, or a voice-over script for one.
 license: MIT
-compatibility: The toolkit the skill copies into a project needs Node.js 22.18+ or Bun, ffmpeg, and Chrome, Chromium, Brave or Edge. Any other tools are up to the agent and the user.
+compatibility: The toolkit the skill copies into a project needs Node.js 22.18+ or Bun, ffmpeg 5 or later, and Chrome, Chromium, Brave or Edge. Any other tools are up to the agent and the user.
 metadata:
   author: ejekanshjain
-  version: '1.0.0'
+  version: '1.1.0'
 ---
 
 # Product Video
@@ -40,18 +40,21 @@ Whatever you use, everything that builds the video lives in the project: tools, 
 
 `assets/toolkit/` is reference code, not a program to run from here. Never run anything inside `SKILL_DIR`. Copy the toolkit into the project, adapt it, and run only that copy.
 
-| File                 | What it does                                                                                                   |
-| -------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `toolkit/make.ts`    | Records segments from a config, then exports video, poster, captions, audio mix, timeline and voice-over sheet |
-| `toolkit/snap.ts`    | Screenshots app pages at the recording size, for planning and checking data                                    |
-| `toolkit/check.ts`   | Finds one-frame flashes and harsh brightness jumps, writes a contact sheet                                     |
-| `toolkit/browser.ts` | A dependency-free DevTools Protocol driver for headless Chrome, Chromium, Brave or Edge                        |
-| `toolkit/stage.ts`   | The fake cursor, captions, title cards and frame recorder injected into the page                               |
-| `toolkit/types.ts`   | Config types                                                                                                   |
-| `tour.config.ts`     | Config template with every option explained                                                                    |
-| `video-readme.md`    | Template for the video folder's README                                                                         |
+| File                   | What it does                                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `toolkit/make.ts`      | Records segments from a config, then exports video, poster, captions, audio mix, timeline and voice-over sheet |
+| `toolkit/preflight.ts` | Finds what would make a recording choppy, before you record                                                    |
+| `toolkit/snap.ts`      | Screenshots app pages at the recording size, for planning and checking data                                    |
+| `toolkit/check.ts`     | Finds one-frame flashes, choppy motion and harsh brightness jumps, writes a contact sheet                      |
+| `toolkit/browser.ts`   | A dependency-free DevTools Protocol driver for headless Chrome, Chromium, Brave or Edge                        |
+| `toolkit/stage.ts`     | The fake cursor, captions, title cards and frame recorder injected into the page                               |
+| `toolkit/types.ts`     | Config types                                                                                                   |
+| `tour.config.ts`       | Config template with every option explained                                                                    |
+| `video-readme.md`      | Template for the video folder's README                                                                         |
 
-The toolkit is TypeScript with erasable syntax only, so Node 22.18+ and Bun run it without a build step or dependencies. It needs ffmpeg and a Chromium-based browser.
+The toolkit is TypeScript with erasable syntax only, so Node 22.18+ and Bun run it without a build step or dependencies. It needs ffmpeg 5 or later and a Chromium-based browser.
+
+If the project already has a toolkit copy without `preflight.ts`, update it from `assets/toolkit/` first and keep the project's own changes. Older copies repeat every sixth frame, however cleanly they record.
 
 ### Fit the Project
 
@@ -71,6 +74,7 @@ Before creating any file, read `package.json`, `tsconfig.json` if present, the l
    ```json
    {
      "video": "node src/video/toolkit/make.ts src/video/tour.config.ts",
+     "video:preflight": "node src/video/toolkit/make.ts src/video/tour.config.ts --preflight",
      "video:snap": "node src/video/toolkit/snap.ts src/video/tour.config.ts",
      "video:check": "node src/video/toolkit/check.ts public/video/product-tour.mp4"
    }
@@ -89,6 +93,7 @@ Run everything through the project's scripts. With npm:
 
 ```bash
 npm run video:snap -- /dashboard --full   # look before you script
+npm run video:preflight                   # find what would make it choppy
 npm run video                             # record everything, export
 npm run video -- pricing                  # re-record one segment
 npm run video -- --export                 # new narration or music, no re-recording
@@ -108,6 +113,22 @@ Every export also writes, next to the config, a timeline of each segment's start
 
 Never click anything during recording that changes real data, sends messages or spends money.
 
+### Keep Motion Smooth
+
+Choppy motion is the most common way a recording fails. Follow these steps for every recording:
+
+1. Run preflight before the first recording and after any app change. It takes a few seconds per page, and exits 1 when something needs fixing.
+2. Apply each item in its `fixes` list. Ask the user before you quit or pause any of their programs.
+3. Record a production build of the app when you can. Development builds compile on demand and block the page.
+4. Start nothing else heavy during recording: no builds, test suites, or second recordings.
+5. Read the `Recorded` line for each segment. A choppy take is redone automatically, up to 3 takes, and the smoothest one stays.
+6. If a line ends in `CHOPPY`, run preflight again and fix the cause. More retakes won't help a page that blocks itself.
+7. Trust the check script, not the file's frame rate. Every export reports 30 fps, because repeated frames fill any gaps.
+
+Set `retake: false` on a scene whose `act` changes app state, such as creating a record. A retake repeats everything in `act`, so that scene gets one take. Reset the demo data before you run it again.
+
+[references/pitfalls.md](references/pitfalls.md) explains each cause of choppy motion.
+
 ## Guides
 
 Read these when they apply. They collect what worked, not rules:
@@ -121,7 +142,7 @@ Read these when they apply. They collect what worked, not rules:
 ## Check Before Calling It Done
 
 - Watch it, or look at the check script's contact sheet: no spinners, empty states, errors, debug overlays or real people's data.
-- The check script reports no one-frame flashes. Harsh jumps are fine when they are deliberate cuts.
+- The check script reports no one-frame flashes and no choppy seconds. Harsh jumps are fine when they are deliberate cuts.
 - Every claim on screen and in the narration is true of the product.
 - Play the published file in a real browser, not only headless: press play, seek, and listen if it has sound.
 

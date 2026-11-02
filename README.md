@@ -46,9 +46,9 @@ cp -R skills/skills/product-video ~/.claude/skills/   # or ~/.agents/skills, ~/.
 
 Ask your agent for **a demo video of this app**, **a launch trailer**, **a narrated walkthrough** or **a hero video for the homepage**.
 
-The agent works out the goal, style, length and voice with you, then picks the approach that fits. There are no fixed formats. It can prepare realistic sample data, write a voice-over script timed to the footage, and produce narration audio with the voice you choose. It adds music and captions, checks every frame for flashes, and publishes the video to your site.
+The agent works out the goal, style, length and voice with you, then picks the approach that fits. There are no fixed formats. It can prepare realistic sample data, write a voice-over script timed to the footage, and produce narration audio with the voice you choose. It adds music and captions, checks every frame for flashes and choppy motion, and publishes the video to your site.
 
-The bundled toolkit is optional and easy to extend. It records your real app in a headless browser, with scenes written as plain JavaScript and a gliding cursor. Title cards, captions and fades are all optional. Scenes stretch to fit their narration. Re-recording one scene after a UI change takes about 1.5 minutes.
+The bundled toolkit is optional and easy to extend. It records your real app in a headless browser, with scenes written as plain JavaScript and a gliding cursor. Title cards, captions and fades are all optional. Scenes stretch to fit their narration. A preflight check finds what would make a recording choppy, and choppy takes are redone automatically. Re-recording one scene after a UI change takes about 1.5 minutes.
 
 **Use when:**
 
@@ -57,13 +57,13 @@ The bundled toolkit is optional and easy to extend. It records your real app in 
 - Your UI changed and the existing video is out of date
 - You need a short autoplaying loop for a landing page
 
-**Toolkit requires:** Node.js 22.18+ or Bun, ffmpeg, and Chrome, Chromium, Brave or Edge. No npm dependencies.
+**Toolkit requires:** Node.js 22.18+ or Bun, ffmpeg 5 or later, and Chrome, Chromium, Brave or Edge. No npm dependencies.
 
 The agent copies the toolkit into your project, in your project's language and folder layout, and adds package scripts and a README. Teammates without the skill can rebuild the video or make new ones from the repository.
 
 **Includes:**
 
-- `assets/toolkit/`: TypeScript reference code that records segments, exports the video, poster, captions and audio mix, screenshots pages and checks for flashes
+- `assets/toolkit/`: TypeScript reference code that records segments, exports the video, poster, captions and audio mix, screenshots pages and checks for flashes and choppy motion
 - `assets/tour.config.ts`: the config template, with every option explained
 - `assets/video-readme.md`: the template for your video folder's README
 - `references/`: guides for story and pacing, voice-over, sample data, recording pitfalls and embedding

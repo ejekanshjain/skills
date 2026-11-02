@@ -14,6 +14,20 @@ export type StageOptions = {
   pace: number;
   pixelRatio: number;
   viewport: Viewport;
+  /** Size of the finished video. Frames arrive at this size, not the render size. */
+  capture: Viewport;
+};
+
+/** How steadily a take was captured. */
+export type Smoothness = {
+  /** Fewest frames captured in any one second of the clip. */
+  worstFps: number;
+  /** Where that second starts, in seconds from the clip start. */
+  worstAt: number;
+  /** Longest wait between two frames. */
+  longestGapMs: number;
+  /** Longest time the app blocked its own page. */
+  pageFreezeMs: number;
 };
 
 type Frame = { sessionId: number; data: string; metadata: { timestamp: number } };
@@ -67,8 +81,13 @@ const stageScript = (theme: Theme, hide: string[]) => {
     const tick = make("__pv_tick", "");
     tick.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01;z-index:2147483647;pointer-events:none";
     document.body.append(cursor, caption, curtain, tick);
-    let i = 0;
-    (function paint() { tick.style.background = i++ % 2 ? "#000" : "#010101"; requestAnimationFrame(paint); })();
+    let i = 0, last = 0;
+    const paint = now => {
+      if (last) __pv.freeze = Math.max(__pv.freeze, now - last);
+      last = now;
+      tick.style.background = i++ % 2 ? "#000" : "#010101";
+      requestAnimationFrame(paint);
+    };
     // Builds card or caption content as text, so titles never inject markup
     const fill = (el, card, wrapText) => {
       el.replaceChildren();
@@ -79,10 +98,41 @@ const stageScript = (theme: Theme, hide: string[]) => {
       if (card.title) add(box, "t", card.title);
       if (card.subtitle) add(box, "s", card.subtitle);
     };
-    window.__pv = { cursor, caption, curtain, fill, x: -100, y: -100 };
+    // A transform animation runs off the main thread, so a busy app can't stall the cursor
+    const glide = (frames, ms) => {
+      const place = p => "translate(" + (p.x - 4) + "px, " + (p.y - 2) + "px)";
+      const end = frames[frames.length - 1];
+      cursor.animate(frames.map(p => ({ transform: place(p) })), { duration: ms, easing: "linear" });
+      cursor.style.transform = place(end);
+      __pv.x = end.x;
+      __pv.y = end.y;
+    };
+    window.__pv = { cursor, caption, curtain, fill, glide, x: -100, y: -100, freeze: 0 };
+    requestAnimationFrame(paint);
     return true;
   })()`;
 };
+
+const ease = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+
+/** Scores frame arrival times, in seconds. Assumes at least one frame. */
+function measure(times: number[], pageFreezeMs: number): Smoothness {
+  let longestGap = 0;
+  for (let i = 1; i < times.length; i++) longestGap = Math.max(longestGap, times[i] - times[i - 1]);
+  const clip = times[times.length - 1] - times[0];
+  // Clips under a second have no full window, so score the rate over the clip
+  let worstFps = clip < 1 ? Math.round(times.length / Math.max(clip, 0.001)) : Infinity;
+  let worstAt = 0;
+  let end = 0;
+  for (let start = 0; times[start] + 1 <= times[times.length - 1]; start++) {
+    while (times[end] < times[start] + 1) end++;
+    if (end - start < worstFps) {
+      worstFps = end - start;
+      worstAt = times[start] - times[0];
+    }
+  }
+  return { worstFps, worstAt, longestGapMs: Math.round(longestGap * 1000), pageFreezeMs: Math.round(pageFreezeMs) };
+}
 
 /** Scene helpers for one browser tab, plus a frame recorder. */
 export class Stage {
@@ -132,16 +182,16 @@ export class Stage {
     this.#marks = {};
     // Wait until the closed curtain is on screen before capturing
     await this.page.eval(
-      "new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))",
+      "new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => { __pv.freeze = 0; done(true); })))",
     );
     this.#skipFirst = true;
     this.#recording = true;
-    const { width, height } = this.options.viewport;
+    // Capturing above the video size drops frames and adds no visible sharpness
     await this.page.send("Page.startScreencast", {
       format: "jpeg",
       quality: 92,
-      maxWidth: width * this.options.pixelRatio,
-      maxHeight: height * this.options.pixelRatio,
+      maxWidth: this.options.capture.width,
+      maxHeight: this.options.capture.height,
       everyNthFrame: 1,
     });
   }
@@ -150,30 +200,35 @@ export class Stage {
    * Stops recording and writes an ffmpeg concat list in which each frame
    * lasts until the next one arrived. The list names frames relative to its
    * own folder, so quotes or spaces in the temp path can't break it. Returns
-   * the clip length and when the curtain opened and closed, in seconds from
-   * the clip start.
+   * the clip length, when the curtain opened and closed, in seconds from the
+   * clip start, and how steadily frames arrived.
    */
   async stop() {
     await sleep(120);
     this.#recording = false;
     await this.page.send("Page.stopScreencast");
+    const pageFreezeMs = await this.page.eval<number>("window.__pv?.freeze ?? 0").catch(() => 0);
     await sleep(200);
     await Promise.all(this.#writes);
     const frames = this.#frames;
     if (!frames.length)
       throw new Error("No frames were captured, so this clip is empty.");
+    // Each image gets a 1 ms clock. Without it, ffmpeg snaps frames to its 25 fps
+    // default, which repeats every sixth frame of the 30 fps video
+    const entry = (f: { file: string }) => [`file '${path.basename(f.file)}'`, "option framerate 1000"];
     const lines = frames.flatMap((f, i) => {
       const next = frames[i + 1];
       const duration = next ? Math.max(next.ts - f.ts, 0.001) : 1 / 30;
-      return [`file '${path.basename(f.file)}'`, `duration ${duration.toFixed(4)}`];
+      return [...entry(f), `duration ${duration.toFixed(4)}`];
     });
     const last = frames[frames.length - 1];
-    lines.push(`file '${path.basename(last.file)}'`);
-    writeFileSync(path.join(this.#dir, "list.txt"), lines.join("\n"));
+    lines.push(...entry(last));
+    writeFileSync(path.join(this.#dir, "list.txt"), ["ffconcat version 1.0", ...lines].join("\n"));
     const since = (t?: number) => (t === undefined ? undefined : Math.max(0, t - frames[0].ts));
     return {
       seconds: last.ts - frames[0].ts,
       marks: { open: since(this.#marks.open), close: since(this.#marks.close) },
+      smoothness: measure(frames.map((f) => f.ts), pageFreezeMs),
     };
   }
 
@@ -223,20 +278,23 @@ export class Stage {
     const from = await this.page.eval<Point>("({ x: __pv.x, y: __pv.y })");
     // The first move of a scene starts just off to the lower right
     const start = from.x < 0 ? { x: x + 180, y: y + 140 } : from;
-    const steps = Math.max(8, Math.round(ms / 16));
-    const t0 = performance.now();
-    for (let i = 1; i <= steps; i++) {
-      const p = i / steps;
-      const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+    const at = (p: number): Point => {
+      const e = ease(p);
       // A slight arc looks more like a hand than a straight line
-      const cx = start.x + (x - start.x) * e + Math.sin(Math.PI * e) * (y - start.y) * 0.06;
-      const cy = start.y + (y - start.y) * e - Math.sin(Math.PI * e) * (x - start.x) * 0.06;
-      await this.page.eval(
-        `__pv.x=${cx};__pv.y=${cy};__pv.cursor.style.transform="translate(${cx - 4}px, ${cy - 2}px)";true`,
-      );
-      if (i % 2 === 0 || i === steps) await this.page.mouse("mouseMoved", cx, cy);
-      const wait = t0 + (ms * i) / steps - performance.now();
-      if (wait > 0) await sleep(wait);
+      return {
+        x: start.x + (x - start.x) * e + Math.sin(Math.PI * e) * (y - start.y) * 0.06,
+        y: start.y + (y - start.y) * e - Math.sin(Math.PI * e) * (x - start.x) * 0.06,
+      };
+    };
+    const steps = Math.max(8, Math.round(ms / 16));
+    const frames = Array.from({ length: steps + 1 }, (_, i) => at(i / steps));
+    const t0 = performance.now();
+    await this.page.eval(`__pv.glide(${JSON.stringify(frames)}, ${ms}), true`);
+    for (let p = 0; p < 1; ) {
+      await sleep(33);
+      p = Math.min(1, (performance.now() - t0) / ms);
+      const point = at(p);
+      await this.page.mouse("mouseMoved", point.x, point.y);
     }
   }
 

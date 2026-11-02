@@ -67,6 +67,8 @@ export type Scene = Sound & {
   /** A line shown while the scene plays. */
   caption?: string;
   cursor?: boolean;
+  /** False when `act` changes app state, because a retake would repeat it. */
+  retake?: boolean;
   act: Act;
 };
 
@@ -75,6 +77,8 @@ export type LoopClip = {
   path: string;
   scrollFrom?: number;
   scrollBy?: number;
+  /** False when `act` changes app state, because a retake would repeat it. */
+  retake?: boolean;
   act?: Act;
 };
 

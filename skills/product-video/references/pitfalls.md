@@ -30,11 +30,23 @@ Each problem below happened while building this method. The toolkit handles all 
 
 **Cause:** screencast frames arrive at 1x CSS pixels unless the browser is launched with `--force-device-scale-factor`.
 
-**Fix:** `browser.ts` passes the pixel ratio at launch and in device emulation. Frames arrive at 2880x1620 for a 1440x810 viewport and are downscaled to 1920x1080.
+**Fix:** `browser.ts` passes the pixel ratio at launch and in device emulation. A 1440x810 viewport renders at 2880x1620, and the browser downscales each frame to the 1920x1080 video size.
 
 ## Choppy Motion
 
-The screencast only sends frames when the page repaints, at irregular times. `stage.ts` keeps a 1px element repainting every frame and writes an ffmpeg concat list with each frame's real duration, so motion keeps its real timing. Expect 40 to 60 captured frames per second, resampled to 30.
+**Symptom:** motion stutters or drops to 12 to 17 frames per second in places, yet the file reports a steady 30 fps. The export fills gaps with repeated frames, so the file's frame rate proves nothing.
+
+The screencast only sends frames when the page repaints, at irregular times. `stage.ts` keeps a 1px element repainting every frame and writes an ffmpeg concat list with each frame's real duration. Expect 50 to 60 captured frames per second, resampled to 30.
+
+Choppy motion has five separate causes, and each has its own fix:
+
+- **A coarse ffmpeg clock:** ffmpeg gives each image in a concat list a 25 fps clock, and snaps frames to its 40 ms grid. That repeats every sixth frame of the 30 fps video, even from a perfect recording. `Stage.stop` sets `option framerate 1000` on each image to prevent it. Keep that line.
+- **Capturing too many pixels:** sending 2880x1620 frames drops the worst second as low as 22 fps on a laptop. `Stage.record` caps frames at the video size, which held 54 fps or better on the same page.
+- **A busy computer:** other programs take processor time from the browser. Preflight lists them.
+- **An app that blocks its own page:** development builds and heavy work on load freeze the page. The cursor runs off the main thread to survive this. Scrolling doesn't: scroll gestures and wheel input both looked worse in the finished video than the current scroll, so fix the page instead. Preflight reports the longest freeze for each page.
+- **A one-off hiccup:** the first scroll of a take sometimes freezes for about 270 ms, and a heavy page can dip for a second. `make.ts` scores each take and records it again, up to 3 takes.
+
+Frame counts don't show every stutter, because frames keep arriving while the content sits still. To check motion, read the check script's `choppySeconds`. It counts repeated frames between moving ones, and treats longer holds as deliberate pauses. Typing can show up there and is fine.
 
 ## Dev Overlays in the Shot
 

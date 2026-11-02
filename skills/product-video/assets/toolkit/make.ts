@@ -12,18 +12,21 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { Browser, importConfig, sleep } from "./browser.ts";
-import { Stage } from "./stage.ts";
+import { isSmooth, machineFixes, preflight, smoothText } from "./preflight.ts";
+import { type Smoothness, Stage } from "./stage.ts";
 import type { Audio, Bookend, Loop, Output, Scene, Theme, VideoConfig, Viewport } from "./types.ts";
 
 const USAGE = `Record a product video from a running web app.
 
-  node make.ts <config> [segment keys...] [--export] [--loop]
+  node make.ts <config> [segment keys...] [--export] [--loop] [--preflight]
 
   <config>        video config, such as tour.config.ts
   segment keys    re-record only these (intro, outro or scene keys), reuse the rest
   --export        skip recording; rebuild the timeline, script, captions, audio
                   mix and video files from the clips already recorded
   --loop          record and export the silent loop instead of the tour
+  --preflight     check this computer and a short test scroll of every page,
+                  then print what to fix; records no video
 
 Besides the video, every export writes next to the config:
   <name>.timeline.json   when each segment's card and screen start and end
@@ -93,6 +96,9 @@ const DEFAULTS: Omit<Config, "baseUrl" | "scenes" | "dir"> = {
   fadeMs: 900,
   cardMs: 1000,
 };
+
+/** Takes of one segment before keeping the smoothest. */
+const MAX_TAKES = 3;
 
 /** Speaking rate used for word budgets: about 145 words a minute. */
 const WORDS_PER_SECOND = 2.4;
@@ -218,9 +224,37 @@ async function openStage(config: Config, workDir: string) {
     pace: config.pace,
     pixelRatio: config.pixelRatio,
     viewport: config.viewport,
+    capture: { width: config.output.width, height: config.output.height },
   });
   if (config.signIn) await config.signIn({ page, baseUrl: config.baseUrl });
   return { page, stage };
+}
+
+/**
+ * Records up to MAX_TAKES until one is smooth. `keep` runs for each take that
+ * beats the takes before it, while its frames are still on disk.
+ */
+async function bestTake<T extends { smoothness: Smoothness }>(
+  key: string,
+  takes: number,
+  record: () => Promise<T>,
+  keep: (take: T) => void,
+) {
+  const score = (s: Smoothness) => s.worstFps - s.longestGapMs / 10;
+  let best: T | undefined;
+  for (let take = 1; take <= takes; take++) {
+    const result = await record();
+    if (!best || score(result.smoothness) > score(best.smoothness)) {
+      keep(result);
+      best = result;
+    }
+    if (isSmooth(best.smoothness)) break;
+    if (take < takes)
+      console.log(`Take ${take} of ${key} is choppy (${smoothText(result.smoothness)}). Recording it again.`);
+  }
+  if (!best) throw new Error(`No take of ${key} was recorded.`);
+  const verdict = isSmooth(best.smoothness) ? "" : " CHOPPY: run --preflight to find the cause";
+  console.log(`Recorded ${key}: ${smoothText(best.smoothness)}${verdict}`);
 }
 
 async function recordTour(config: Config, keys: string[], workDir: string) {
@@ -229,54 +263,58 @@ async function recordTour(config: Config, keys: string[], workDir: string) {
     await page.goto(url(config, pathname), { busy: config.busy });
     if (config.prepare) await config.prepare(page);
   };
+  const take = async (segment: Segment, dir: string) => {
+    const hold = holdSeconds(config, segment) * 1000;
+    if (segment.kind === "card") {
+      await goto(segment.path);
+      await stage.inject({ cursor: false });
+      await stage.record(dir);
+      await stage.curtain(false, segment, 300);
+      const shown = Date.now();
+      await stage.curtainText(true, segment.holdMs ?? (segment.key === "intro" ? 2800 : 3400));
+      await sleep(hold - (Date.now() - shown));
+      if (segment.key === "intro") await stage.curtainText(false, 500);
+    } else {
+      await goto(segment.path);
+      await stage.inject({ cursor: segment.cursor !== false });
+      await stage.record(dir);
+      if (segment.card) {
+        await stage.curtain(false, segment.card, 250);
+        await stage.curtainText(true, config.cardMs);
+        await stage.curtainText(false, 350);
+      } else {
+        // No card: start on the background color and fade straight in
+        await stage.curtain(false, { title: "" }, 250);
+      }
+      // The export fades in over this wait and out over the one after the
+      // caption hides, so keep both still
+      const opened = Date.now();
+      await stage.curtain(true, undefined, config.fadeMs);
+      if (segment.caption)
+        await stage.caption({ ...segment.card, subtitle: segment.caption });
+      await segment.act(stage, page);
+      // Hold the last frame until the voice-over or minimum time is done
+      await sleep(hold - (Date.now() - opened) - config.fadeMs);
+      await stage.caption(null);
+      await sleep(config.fadeMs);
+      await stage.curtain(false, { title: "" }, 150);
+    }
+    return stage.stop();
+  };
   try {
     for (const segment of segments(config).filter((s) => keys.includes(s.key))) {
       const dir = path.join(workDir, "clips", segment.key);
-      const hold = holdSeconds(config, segment) * 1000;
-      if (segment.kind === "card") {
-        await goto(segment.path);
-        await stage.inject({ cursor: false });
-        await stage.record(dir);
-        await stage.curtain(false, segment, 300);
-        const shown = Date.now();
-        await stage.curtainText(true, segment.holdMs ?? (segment.key === "intro" ? 2800 : 3400));
-        await sleep(hold - (Date.now() - shown));
-        if (segment.key === "intro") await stage.curtainText(false, 500);
-      } else {
-        await goto(segment.path);
-        await stage.inject({ cursor: segment.cursor !== false });
-        await stage.record(dir);
-        if (segment.card) {
-          await stage.curtain(false, segment.card, 250);
-          await stage.curtainText(true, config.cardMs);
-          await stage.curtainText(false, 350);
-        } else {
-          // No card: start on the background color and fade straight in
-          await stage.curtain(false, { title: "" }, 250);
-        }
-        // The export fades in over this wait and out over the one after the
-        // caption hides, so keep both still
-        const opened = Date.now();
-        await stage.curtain(true, undefined, config.fadeMs);
-        if (segment.caption)
-          await stage.caption({ ...segment.card, subtitle: segment.caption });
-        await segment.act(stage, page);
-        // Hold the last frame until the voice-over or minimum time is done
-        await sleep(hold - (Date.now() - opened) - config.fadeMs);
-        await stage.caption(null);
-        await sleep(config.fadeMs);
-        await stage.curtain(false, { title: "" }, 150);
-      }
-      const { seconds, marks } = await stage.stop();
-      const file = path.join(workDir, "encoded", `${segment.key}.mp4`);
-      encodeClip(config, dir, marks, file);
-      const length = duration(file);
-      // Where the screen shows, in seconds of this clip, for the timeline
-      writeFileSync(
-        file.replace(/\.mp4$/, ".json"),
-        JSON.stringify({ seconds: length, screenStart: marks.open ?? 0, screenEnd: marks.close ?? length }),
-      );
-      console.log(`Recorded ${segment.key}: ${seconds.toFixed(1)}s`);
+      const retake = segment.kind === "card" || segment.retake !== false;
+      await bestTake(segment.key, retake ? MAX_TAKES : 1, () => take(segment, dir), ({ marks }) => {
+        const file = path.join(workDir, "encoded", `${segment.key}.mp4`);
+        encodeClip(config, dir, marks, file);
+        const length = duration(file);
+        // Where the screen shows, in seconds of this clip, for the timeline
+        writeFileSync(
+          file.replace(/\.mp4$/, ".json"),
+          JSON.stringify({ seconds: length, screenStart: marks.open ?? 0, screenEnd: marks.close ?? length }),
+        );
+      });
     }
   } finally {
     await page.close();
@@ -478,20 +516,23 @@ async function recordLoop(config: Config, loop: Loop, keys: string[], workDir: s
   try {
     for (const clip of loop.clips.filter((c) => !keys.length || keys.includes(c.key))) {
       const dir = path.join(workDir, "loop", clip.key);
-      await page.goto(url(config, clip.path), { busy: config.busy });
-      if (config.prepare) await config.prepare(page);
-      await stage.inject({ cursor: false });
-      await page.eval(`__pv.curtain.remove(), window.scrollTo(0, ${clip.scrollFrom ?? 0}), true`);
-      await stage.record(dir);
-      await sleep(700);
-      if (clip.act) await clip.act(stage, page);
-      else await stage.scroll(clip.scrollBy ?? 300, ((seconds - 1.6) * 1000) / config.pace);
-      await sleep(900);
-      const result = await stage.stop();
-      if (result.seconds < seconds)
-        throw new Error(`Loop clip ${clip.key} is ${result.seconds.toFixed(1)}s, shorter than ${seconds}s.`);
-      encodeClip(config, dir, null, path.join(workDir, "loop", `${clip.key}.mp4`), seconds);
-      console.log(`Recorded loop ${clip.key}`);
+      const take = async () => {
+        await page.goto(url(config, clip.path), { busy: config.busy });
+        if (config.prepare) await config.prepare(page);
+        await stage.inject({ cursor: false });
+        await page.eval(`__pv.curtain.remove(), window.scrollTo(0, ${clip.scrollFrom ?? 0}), true`);
+        await stage.record(dir);
+        await sleep(700);
+        if (clip.act) await clip.act(stage, page);
+        else await stage.scroll(clip.scrollBy ?? 300, ((seconds - 1.6) * 1000) / config.pace);
+        await sleep(900);
+        return stage.stop();
+      };
+      await bestTake(`loop ${clip.key}`, clip.retake === false ? 1 : MAX_TAKES, take, (result) => {
+        if (result.seconds < seconds)
+          throw new Error(`Loop clip ${clip.key} is ${result.seconds.toFixed(1)}s, shorter than ${seconds}s.`);
+        encodeClip(config, dir, null, path.join(workDir, "loop", `${clip.key}.mp4`), seconds);
+      });
     }
   } finally {
     await page.close();
@@ -537,6 +578,7 @@ async function main() {
   }
   const loop = args.includes("--loop");
   const exportOnly = args.includes("--export");
+  const checkOnly = args.includes("--preflight");
   const [configArg, ...keys] = args.filter((a) => !a.startsWith("--"));
   const { configPath, config: user } = await importConfig(configArg);
   const config = resolveConfig(user, configPath);
@@ -548,6 +590,32 @@ async function main() {
   if (!exportOnly) {
     const alive = await fetch(config.baseUrl).then((r) => r.status < 500, () => false);
     if (!alive) throw new Error(`Nothing answers at ${config.baseUrl}. Start the app first.`);
+  }
+
+  if (checkOnly) {
+    const fixes = machineFixes();
+    const { page, stage } = await openStage(config, workDir);
+    const pages = [
+      ...(config.scenes?.length ? segments(config).map((s) => s.path ?? "/") : []),
+      ...(config.loop?.clips ?? []).map((c) => c.path),
+    ];
+    try {
+      const ready = await preflight({
+        page,
+        stage,
+        pages: [...new Set(pages)],
+        dir: path.join(workDir, "preflight"),
+        fixes,
+        visit: async (pathname) => {
+          await page.goto(url(config, pathname), { busy: config.busy });
+          if (config.prepare) await config.prepare(page);
+        },
+      });
+      process.exitCode = ready ? 0 : 1;
+    } finally {
+      await page.close();
+    }
+    return;
   }
 
   if (loop) {
@@ -567,7 +635,7 @@ async function main() {
 }
 
 main().then(
-  () => process.exit(0),
+  () => process.exit(),
   (error: unknown) => {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);

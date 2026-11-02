@@ -5,15 +5,16 @@ This folder records the product videos from the running app. Replace every `your
 ## Requirements
 
 - Node.js 22.18 or later, or Bun
-- ffmpeg and ffprobe on your `PATH`
+- ffmpeg 5 or later and ffprobe on your `PATH`
 - Chrome, Chromium, Brave or Edge. Set `CHROMIUM_PATH` if yours is installed somewhere unusual.
 
 ## Make the Video
 
 1. Reseed the demo data: `your_seed_command`. The demo login is `your_demo_email`.
 2. Start the app at `your_base_url`.
-3. Record and export: `your_video_command`.
-4. Check for flashes and look at the contact sheet: `your_check_command`.
+3. Close other heavy programs, then find what would make the video choppy: `your_preflight_command`.
+4. Record and export: `your_video_command`. Choppy takes are redone automatically.
+5. Check for flashes and choppy motion, and look at the contact sheet: `your_check_command`.
 
 The export writes MP4, WebM, a poster image and captions to `your_output_folder`.
 

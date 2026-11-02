@@ -4,8 +4,10 @@
 // are plain code, so anything a browser can do works here: type into forms,
 // open menus, inject overlays, trigger animations.
 //
-// Record, re-record one scene, re-export, or build the silent loop:
+// Check for choppiness, record, re-record one scene, re-export, or build the
+// silent loop:
 //
+//   node toolkit/make.ts tour.config.ts --preflight
 //   node toolkit/make.ts tour.config.ts
 //   node toolkit/make.ts tour.config.ts pricing
 //   node toolkit/make.ts tour.config.ts --export
@@ -119,6 +121,7 @@ export default {
       // A line that stays on screen during the scene, or omit it
       caption: "A short line shown while the scene plays.",
       // cursor: false,      // hide the fake cursor
+      // retake: false,      // one take only, for scenes that change app state
       // minSeconds: 8,      // keep the screen up at least this long
       // Spoken text: feeds the voice-over sheet and the captions file
       narration: "",
